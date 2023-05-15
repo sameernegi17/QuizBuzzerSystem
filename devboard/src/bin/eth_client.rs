@@ -20,6 +20,7 @@ use heapless::Vec;
 use rand_core::RngCore;
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
+use serde::{Serialize, Deserialize};
 
 macro_rules! singleton {
     ($val:expr) => {{
@@ -30,13 +31,19 @@ macro_rules! singleton {
     }};
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+
 type Device = Ethernet<'static, ETH, GenericSMI>;
 
 #[embassy_executor::task]
 async fn net_task(stack: &'static Stack<Device>) -> ! {
     stack.run().await
 }
-
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
     let mut config = Config::default();
@@ -102,6 +109,8 @@ async fn main(spawner: Spawner) -> ! {
     loop {
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 100, 1), 8000));
 
+        
+        let mut counter = 0;
         info!("connecting...");
         let r = client.connect(addr).await;
         if let Err(e) = r {
@@ -111,8 +120,24 @@ async fn main(spawner: Spawner) -> ! {
         }
         let mut connection = r.unwrap();
         info!("connected!");
+        let mut point = Point { x: 1, y: 2 };
         loop {
-            let r = connection.write_all(b"Hello\n").await;
+
+            let serialized = serde_json_core::ser::to_string::<Point,200>(&point).unwrap();
+
+            // Prints serialized = {"x":1,"y":2}
+
+            let mut buf = [0u8; 64];
+
+            let s: &str = format_no_std::show(
+                &mut buf,
+                format_args!("GET /show/{serialized} HTTP/1.1\r\n\r\n"),
+            ).unwrap();
+
+
+            info!("serialized = {:?}", s);
+            
+            let r = connection.write_all(s.as_bytes()).await;
             if let Err(e) = r {
                 info!("write error: {:?}", e);
 
@@ -122,7 +147,11 @@ async fn main(spawner: Spawner) -> ! {
 
                 continue;
             }
+            point.x +=1;
+            point.y +=5;
             Timer::after(Duration::from_secs(1)).await;
+
+            
         }
     }
 }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Server-sent events</title>
+    <style>
+        p {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        function httpGet(theUrl)
+        {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+            xmlHttp.send( );
+            console.log(JSON.parse(xmlHttp.responseText));
+            return xmlHttp.responseText;
+        }
+
+        let root = document.getElementById("root");
+        let events = httpGet("http://192.168.100.1:8000/score_page");
+        const obj = JSON.parse(events);
+        const body = document.body,
+        tbl = document.createElement('table');
+        tbl.style.width = '100px';
+        tbl.style.border = '1px solid black';
+        tbl.cellPadding = "40px"
+
+        Object.keys(obj).forEach(function(key) {
+            const tr = tbl.insertRow();
+            const td = tr.insertCell();
+            td.appendChild(document.createTextNode(key))
+            const td1 = tr.insertCell();
+            td1.appendChild(document.createTextNode(obj[key]))
+        })
+
+        setTimeout(() => {
+        document.location.reload();
+        }, 3000);
+
+        body.appendChild(tbl);
+
+
+    </script>
+</body>
+</html>
