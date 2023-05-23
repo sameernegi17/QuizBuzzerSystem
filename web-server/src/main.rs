@@ -80,7 +80,7 @@ async fn main() -> std::io::Result<()> {
     });
 
     let game_state: web::Data<GameState> =
-        web::Data::new(GameState(Mutex::new(game::ReactionTimeGame {})));
+        web::Data::new(GameState(Mutex::new(game::ReactionTimeGame::new())));
 
     let conf = app_config::load_config().expect("Failed to load configuration");
 

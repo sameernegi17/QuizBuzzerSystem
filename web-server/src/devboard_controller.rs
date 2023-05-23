@@ -7,19 +7,19 @@ use chrono::{DateTime, Utc};
 #[derive(Debug, serde::Deserialize)]
 pub struct DevboardEvents {
     pub number_of_buttons: i32,
+    pub ms_since_reset: usize,
     pub button_events: Vec<DevboardEvent>,
 }
 
 #[derive(Debug, serde::Deserialize)]
 pub struct DevboardEvent {
-    button_index: i32,
-    event_type: DevboardEventType,
-    #[serde(with = "chrono::serde::ts_milliseconds")]
-    timestamp: DateTime<Utc>,
+    pub button_index: usize,
+    pub event_type: DevboardEventType,
+    pub timestamp: usize,
 }
 
-#[derive(Debug, serde::Deserialize)]
-enum DevboardEventType {
+#[derive(Debug, serde::Deserialize, PartialEq)]
+pub enum DevboardEventType {
     Pressed,
     Released,
 }
@@ -31,7 +31,7 @@ pub struct DevboardButtonLeds {
     pub button_leds: Vec<DevboardButtonLed>,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, Clone)]
 pub struct DevboardButtonLed {
     pub enabled: bool,
 }
