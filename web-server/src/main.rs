@@ -11,6 +11,7 @@ use std::sync::Mutex;
 mod app_config;
 mod devboard_controller;
 mod frontend_controller;
+mod game;
 
 struct AppStateWithCounter {
     counter: Mutex<i32>, // <- Mutex is necessary to mutate safely across threads
@@ -25,6 +26,8 @@ struct Point {
 struct RequestPoint {
     point: Mutex<Point>,
 }
+
+struct GameState(Mutex<game::ReactionTimeGame>);
 
 async fn add_one(data: web::Data<AppStateWithCounter>) -> String {
     let mut counter = data.counter.lock().unwrap(); // <- get counter's MutexGuard
@@ -66,6 +69,8 @@ async fn scorepage() -> actix_web::Result<NamedFile> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
+
     let counter = web::Data::new(AppStateWithCounter {
         counter: Mutex::new(0),
     });
@@ -73,6 +78,9 @@ async fn main() -> std::io::Result<()> {
     let point: web::Data<RequestPoint> = web::Data::new(RequestPoint {
         point: Mutex::new(Point { x: (0), y: (0) }),
     });
+
+    let game_state: web::Data<GameState> =
+        web::Data::new(GameState(Mutex::new(game::ReactionTimeGame {})));
 
     let conf = app_config::load_config().expect("Failed to load configuration");
 
@@ -82,6 +90,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(counter.clone())
             .app_data(point.clone())
+            .app_data(game_state.clone())
             .route("/", web::to(index))
             .route("/add", web::to(add_one))
             .route("/score_page", web::to(score_page))

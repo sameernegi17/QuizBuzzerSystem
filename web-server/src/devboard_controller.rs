@@ -1,3 +1,4 @@
+use crate::{game::QuizMode, GameState};
 use actix_web::{web, HttpResponse, Responder};
 use chrono::{DateTime, Utc};
 
@@ -5,12 +6,12 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct DevboardEvents {
-    number_of_buttons: i32,
-    button_events: Vec<DevboardEvent>,
+    pub number_of_buttons: i32,
+    pub button_events: Vec<DevboardEvent>,
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct DevboardEvent {
+pub struct DevboardEvent {
     button_index: i32,
     event_type: DevboardEventType,
     #[serde(with = "chrono::serde::ts_milliseconds")]
@@ -26,16 +27,19 @@ enum DevboardEventType {
 // Response
 
 #[derive(Debug, serde::Serialize)]
-struct DevboardButtonLeds {
-    button_leds: Vec<DevboardButtonLed>,
+pub struct DevboardButtonLeds {
+    pub button_leds: Vec<DevboardButtonLed>,
 }
 
 #[derive(Debug, serde::Serialize)]
-struct DevboardButtonLed {
-    enabled: bool,
+pub struct DevboardButtonLed {
+    pub enabled: bool,
 }
 
-pub async fn handle_devboard_request(devboard_events: web::Json<DevboardEvents>) -> impl Responder {
+pub(crate) async fn handle_devboard_request(
+    devboard_events: web::Json<DevboardEvents>,
+    game_state: web::Data<crate::GameState>,
+) -> impl Responder {
     println!("Number of buttons: {}", devboard_events.number_of_buttons);
     for devboard_event in &devboard_events.button_events {
         println!(
@@ -44,13 +48,7 @@ pub async fn handle_devboard_request(devboard_events: web::Json<DevboardEvents>)
         );
     }
 
-    let devboard_button_leds = DevboardButtonLeds {
-        button_leds: vec![
-            DevboardButtonLed { enabled: true },
-            DevboardButtonLed { enabled: true },
-            DevboardButtonLed { enabled: false },
-        ],
-    };
+    let devboard_button_leds = game_state.0.lock().unwrap().update(devboard_events.0);
 
     HttpResponse::Ok().json(devboard_button_leds)
 }
