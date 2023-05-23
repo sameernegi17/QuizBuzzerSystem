@@ -9,7 +9,7 @@ pub struct AppConfig {
 
 pub fn load_config() -> Result<AppConfig, config::ConfigError> {
     let env: String = std::env::var("RUN_MODE").unwrap_or_else(|_| "dev".into());
-    let env_config_file = format!("../config/config_{}.toml", env);
+    let env_config_file = format!("config/config_{}.toml", env);
 
     let cfg = config::Config::builder()
         .add_source(File::with_name(&env_config_file).required(true))

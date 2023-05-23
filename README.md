@@ -30,7 +30,7 @@ Running the web server
 
 ```bash
 # Currently, you need to start from this path due to hardcoded paths.
-cd web-server/src
+cd web-server
 
 # Start with default/dev config
 cargo run --release

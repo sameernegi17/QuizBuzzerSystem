@@ -1,18 +1,24 @@
+import { BackendService } from "./backend.service";
 import di from "./di.js";
 import { QuestionService } from "./question.service.js";
 
-interface ButtonEvent {
+interface ButtonEvents {
+  buttonEvents:  
+}
 
+interface ButtonEvent {
+  buttonIndex: number,
 }
 
 class GameComponent {
 
   private _socket: WebSocket;
 
-  private resultElement: HTMLDivElement;
+  // private _winnerListElement: HTMLDivElement;
 
   constructor(
-    private _questionService: QuestionService) {}
+    private _questionService: QuestionService,
+    private _backendService: BackendService) {}
   
   public onInit() {
     this._socket = new WebSocket('ws://localhost:8000/websocket');
@@ -26,33 +32,44 @@ class GameComponent {
     const generateButtonElement = document.getElementById('generate-button') as HTMLButtonElement;
     generateButtonElement.addEventListener('click', _ => this.onGenerateButtonClicked());
 
-    const winnerDivElement = document.getElementById('winner') as HTMLDivElement;
-    this.resultElement = winnerDivElement;
-
+    // this._winnterListElement = document.getElementById('winner') as HTMLDivElement;
+    
     this._socket.addEventListener('message', (event) => {
-      this.resultElement.textContent = event.data;
+
+      console.log(`Message received: ${event.data}`)
+
+      // const message = event.data as string;
+      // const ids = message.split(",").map(num => +num);
+
+      // ids.forEach(id => {
+
+      //   const element = document.getElementById(`winner-${id}`);
+      //   if(element === null) {
+      //     const child = document.createElement('li') as HTMLLIElement;
+      //     child.id = `winner-${id}`;
+      //     child.textContent = `Button ${id} pressed!`;
+      //     this._winnerListElement.
+      //   }
+
+      // }
+
+      // this.resultElement.textContent = event.data;
     });
     
   }
 
-  private sendMessage(message: string) {
-    this._socket.send(message);
-  }
-
   private onGenerateButtonClicked() {
 
-    console.log('clicked')
     const newQuestion = this._questionService.getRandomQuestion();
     const questionElement = document.getElementById('question') as HTMLParagraphElement;
-
     questionElement.textContent = newQuestion;
 
-    this._socket.send('reset');
+    this._backendService.resetGame();
   }
 
 
 
 }
 
-const gameComponent = new GameComponent(di.questionService);
+const gameComponent = new GameComponent(di.questionService, di.backendService);
 gameComponent.onInit();

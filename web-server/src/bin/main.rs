@@ -57,11 +57,11 @@ async fn score_page(_req: HttpRequest, requestpoint: web::Data<RequestPoint>) ->
 }
 
 async fn game_page() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open("../static/html/game.html")?) // Modify the path as per your file structure
+    Ok(NamedFile::open("static/html/game.html")?) // Modify the path as per your file structure
 }
 
 async fn scorepage() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open("../static/html/scorepage.html")?) // Modify the path as per your file structure
+    Ok(NamedFile::open("static/html/scorepage.html")?) // Modify the path as per your file structure
 }
 
 #[actix_web::main]
@@ -112,7 +112,7 @@ async fn main() -> std::io::Result<()> {
             .route("/reset", web::to(reset_route))
             .service(show_point)
             .service(
-                fs::Files::new("/static", "../static")
+                fs::Files::new("/static", "static")
                     .show_files_listing()
                     .use_last_modified(true),
             )
