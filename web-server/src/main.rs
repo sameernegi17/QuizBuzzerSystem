@@ -104,6 +104,7 @@ async fn main() -> std::io::Result<()> {
                 "/websocket",
                 web::get().to(frontend_controller::websocket_route),
             )
+            .route("/reset", web::to(frontend_controller::reset_route))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "../static")

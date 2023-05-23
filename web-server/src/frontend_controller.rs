@@ -43,3 +43,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
         println!("Someone connected to the socket!");
     }
 }
+
+pub(crate) async fn reset_route(game_state: web::Data<crate::GameState>) -> impl Responder {
+    print!("Resetting game state...");
+
+    *game_state.0.lock().unwrap() = crate::game::ReactionTimeGame {};
+
+    HttpResponse::Ok()
+}
