@@ -1,0 +1,8 @@
+[workspace]
+members = ["WebServer"]
+
+# For the devboard member to work, we need to force the target
+# `thumbv7em-none-eabihf` for this package. However forcing this
+# via the unstable feature `per-package-target`, we break some
+# dependencies of it. Until resolved, we exclude this member.
+exclude = ["devboard"]
