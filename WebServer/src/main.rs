@@ -6,6 +6,7 @@ use serde::{Serialize,Deserialize};
 use std::path::PathBuf;
 
 mod app_config;
+mod devboard_controller;
 
 struct AppStateWithCounter {
     counter: Mutex<i32>, // <- Mutex is necessary to mutate safely across threads
@@ -81,6 +82,7 @@ async fn main() -> std::io::Result<()> {
             .route("/add", web::to(add_one))
             .route("/score_page", web::to(score_page))
             .route("/scorepage", web::to(scorepage))
+            .route("/devboard", web::post().to(devboard_controller::handle_devboard_request))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "../static")
