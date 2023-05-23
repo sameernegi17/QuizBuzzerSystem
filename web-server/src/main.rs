@@ -1,9 +1,12 @@
-use actix_web::{web, get, Result, App, HttpServer, Responder,HttpRequest, HttpResponse, http::StatusCode, dev::AppConfig};
-use std::sync::Mutex;
 use actix_files as fs;
 use actix_files::NamedFile;
-use serde::{Serialize,Deserialize};
+use actix_web::{
+    dev::AppConfig, get, http::StatusCode, web, App, HttpRequest, HttpResponse, HttpServer,
+    Responder, Result,
+};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 mod app_config;
 mod devboard_controller;
@@ -19,9 +22,8 @@ struct Point {
     y: i32,
 }
 
-struct RequestPoint
-{
-    point : Mutex<Point>
+struct RequestPoint {
+    point: Mutex<Point>,
 }
 
 async fn add_one(data: web::Data<AppStateWithCounter>) -> String {
@@ -32,36 +34,34 @@ async fn add_one(data: web::Data<AppStateWithCounter>) -> String {
 }
 
 #[get("/show/{data}")]
-async fn show_point(req: HttpRequest,requestpoint: web::Data<RequestPoint>) -> impl Responder {
+async fn show_point(req: HttpRequest, requestpoint: web::Data<RequestPoint>) -> impl Responder {
     let data = req.match_info().get("data").unwrap();
-
 
     let decoded_string: Point = serde_json::from_str(&data).unwrap();
     let mut mutreqpoint = requestpoint.point.lock().unwrap();
     *mutreqpoint = decoded_string;
     println!("{:?}", *mutreqpoint);
-    format!("{:?}", mutreqpoint) 
+    format!("{:?}", mutreqpoint)
 }
 
 async fn index(req: HttpRequest) -> Result<HttpResponse> {
-
     Ok(HttpResponse::build(StatusCode::OK)
-    .content_type("text/html; charset=utf-8")
-    .body(include_str!("../static/html/index.html")))
+        .content_type("text/html; charset=utf-8")
+        .body(include_str!("../static/html/index.html")))
 }
 
-async fn score_page(req: HttpRequest,requestpoint: web::Data<RequestPoint>) -> impl Responder {
+async fn score_page(req: HttpRequest, requestpoint: web::Data<RequestPoint>) -> impl Responder {
     let mutreqpoint = requestpoint.point.lock().unwrap();
     let serialized = serde_json::to_string(&(*mutreqpoint));
     serialized
 }
 
 async fn game_page() -> actix_web::Result<NamedFile> {
-  Ok(NamedFile::open("../static/html/game.html")?) // Modify the path as per your file structure
+    Ok(NamedFile::open("../static/html/game.html")?) // Modify the path as per your file structure
 }
 
 async fn scorepage() -> actix_web::Result<NamedFile> {
-  Ok(NamedFile::open("../static/html/scorepage.html")?) // Modify the path as per your file structure
+    Ok(NamedFile::open("../static/html/scorepage.html")?) // Modify the path as per your file structure
 }
 
 #[actix_web::main]
@@ -71,13 +71,12 @@ async fn main() -> std::io::Result<()> {
     });
 
     let point: web::Data<RequestPoint> = web::Data::new(RequestPoint {
-        point : Mutex::new(Point { x: (0), y: (0) }),
+        point: Mutex::new(Point { x: (0), y: (0) }),
     });
 
     let conf = app_config::load_config().expect("Failed to load configuration");
 
     println!("Host IP: {}:{}", conf.host_ip, conf.host_port);
-
 
     HttpServer::new(move || {
         App::new()
@@ -87,17 +86,22 @@ async fn main() -> std::io::Result<()> {
             .route("/add", web::to(add_one))
             .route("/score_page", web::to(score_page))
             .route("/scorepage", web::to(scorepage))
-            .route("/devboard", web::post().to(devboard_controller::handle_devboard_request))
+            .route(
+                "/devboard",
+                web::post().to(devboard_controller::handle_devboard_request),
+            )
             .route("/game", web::to(game_page))
-            .route("/websocket", web::get().to(frontend_controller::websocket_route))
+            .route(
+                "/websocket",
+                web::get().to(frontend_controller::websocket_route),
+            )
             .service(show_point)
             .service(
                 fs::Files::new("/static", "../static")
                     .show_files_listing()
                     .use_last_modified(true),
             )
-            //.service(fs::Files::new("/static", "./static").show_files_listing())
-
+        //.service(fs::Files::new("/static", "./static").show_files_listing())
     })
     //.bind(("192.168.100.1", 8000))?
     .bind((&conf.host_ip as &str, conf.host_port as u16))?
