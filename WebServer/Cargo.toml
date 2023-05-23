@@ -10,6 +10,7 @@ actix = "0.13"
 actix-web = "4"
 actix-cors = "0.6.4"
 actix-files = "0.6.2"
+config = "0.13.3"
 
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
