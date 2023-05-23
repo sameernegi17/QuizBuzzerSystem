@@ -1,15 +1,23 @@
-function httpGet2(theUrl)
-{
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
-    xmlHttp.send( );
-    return xmlHttp.responseText;
+import di from './di.js';
+import { HttpService } from './http.service.js'
+
+class CounterComponent {
+
+  constructor(private _httpService: HttpService) {}
+
+  public onInit() {
+
+    const root = document.getElementById("root");
+    const url = `${this._httpService.getHostBaseUrl()}/add`;
+    let events = this._httpService.httpGet(url);
+    let data = document.createElement("p");
+    data.innerText = events;
+    root.appendChild(data);
+
+  }
+
 }
 
-let root2 = document.getElementById("root");
-let currentHost2 = window.location.hostname;
-let currentPort2 = window.location.port;
-let events2 = httpGet(`http://${currentHost}:${currentPort}/add`);
-let data = document.createElement("p");
-data.innerText = events2;
-root2.appendChild(data);
+const counterComponent = new CounterComponent(di.httpService);
+counterComponent.onInit();
+
