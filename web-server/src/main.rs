@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 mod app_config;
 mod devboard_controller;
+mod frontend_controller;
 
 struct AppStateWithCounter {
     counter: Mutex<i32>, // <- Mutex is necessary to mutate safely across threads
@@ -55,6 +56,10 @@ async fn score_page(req: HttpRequest,requestpoint: web::Data<RequestPoint>) -> i
     serialized
 }
 
+async fn game_page() -> actix_web::Result<NamedFile> {
+  Ok(NamedFile::open("../static/html/game.html")?) // Modify the path as per your file structure
+}
+
 async fn scorepage() -> actix_web::Result<NamedFile> {
   Ok(NamedFile::open("../static/html/scorepage.html")?) // Modify the path as per your file structure
 }
@@ -83,6 +88,8 @@ async fn main() -> std::io::Result<()> {
             .route("/score_page", web::to(score_page))
             .route("/scorepage", web::to(scorepage))
             .route("/devboard", web::post().to(devboard_controller::handle_devboard_request))
+            .route("/game", web::to(game_page))
+            .route("/websocket", web::get().to(frontend_controller::websocket_route))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "../static")
