@@ -1,4 +1,4 @@
-target
+**/target
 .idea
 **/Cargo.lock
-WebServer/static/js/*.js
+web-server/static/js/*.js

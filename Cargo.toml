@@ -1,5 +1,5 @@
 [workspace]
-members = ["WebServer"]
+members = ["web-server"]
 
 # For the devboard member to work, we need to force the target
 # `thumbv7em-none-eabihf` for this package. However forcing this

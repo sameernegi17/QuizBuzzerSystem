@@ -1,5 +1,5 @@
 [package]
-name = "quiz-buzzer-system"
+name = "devboard"
 version = "0.1.0"
 authors = ["ESR Labs"]
 edition = "2021"
@@ -19,22 +19,53 @@ embassy-net = { git = "https://github.com/KloolK/embassy.git", branch = "mii-phy
 #embassy-net = { path = "../../embassy/embassy-net" }
 
 [dependencies]
-embassy-sync = { version = "0.2.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt"] }
-embassy-executor = { version = "0.2.0", git = "https://github.com/embassy-rs/embassy.git", features = ["arch-cortex-m", "executor-thread", "defmt", "integrated-timers"] }
-embassy-time = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "defmt-timestamp-uptime", "unstable-traits", "tick-hz-32_768"] }
-embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "defmt", "stm32h745xi-cm7", "time-driver-any", "exti", "unstable-pac", "unstable-traits"] }
-embassy-net = { git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "nightly", "tcp", "dhcpv4", "medium-ethernet", "unstable-traits", "proto-ipv6"] }
+embassy-sync = { version = "0.2.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+] }
+embassy-executor = { version = "0.2.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "arch-cortex-m",
+    "executor-thread",
+    "defmt",
+    "integrated-timers",
+] }
+embassy-time = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "defmt-timestamp-uptime",
+    "unstable-traits",
+    "tick-hz-32_768",
+] }
+embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = [
+    "nightly",
+    "defmt",
+    "stm32h745xi-cm7",
+    "time-driver-any",
+    "exti",
+    "unstable-pac",
+    "unstable-traits",
+] }
+embassy-net = { git = "https://github.com/embassy-rs/embassy.git", features = [
+    "defmt",
+    "nightly",
+    "tcp",
+    "dhcpv4",
+    "medium-ethernet",
+    "unstable-traits",
+    "proto-ipv6",
+] }
 embedded-io = { version = "0.4.0", features = ["async"] }
 #embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt"] }
 
 defmt = "0.3"
 defmt-rtt = "0.4"
-serde = { version = "1.0",default-features = false, features = ["derive"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 
 # Each data format lives in its own crate; the sample code below uses JSON
 # but you may be using a different one.
 serde-json-core = "0.5.0"
-cortex-m = { version = "0.7.6", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m = { version = "0.7.6", features = [
+    "inline-asm",
+    "critical-section-single-core",
+] }
 cortex-m-rt = "0.7.0"
 #embedded-hal = "0.2.6"
 #embedded-hal-1 = { package = "embedded-hal", version = "=1.0.0-alpha.10" }
@@ -57,8 +88,8 @@ codegen-units = 1
 debug = 2
 debug-assertions = true # <-
 incremental = false
-opt-level = 3 # <-
-overflow-checks = true # <-
+opt-level = 3           # <-
+overflow-checks = true  # <-
 
 # cargo test
 [profile.test]
@@ -66,8 +97,8 @@ codegen-units = 1
 debug = 2
 debug-assertions = true # <-
 incremental = false
-opt-level = 3 # <-
-overflow-checks = true # <-
+opt-level = 3           # <-
+overflow-checks = true  # <-
 
 # cargo build/run --release
 [profile.release]
@@ -76,8 +107,8 @@ debug = 2
 debug-assertions = false # <-
 incremental = false
 lto = 'fat'
-opt-level = 3 # <-
-overflow-checks = false # <-
+opt-level = 3            # <-
+overflow-checks = false  # <-
 
 # cargo test --release
 [profile.bench]
@@ -86,5 +117,5 @@ debug = 2
 debug-assertions = false # <-
 incremental = false
 lto = 'fat'
-opt-level = 3 # <-
-overflow-checks = false # <-
+opt-level = 3            # <-
+overflow-checks = false  # <-
