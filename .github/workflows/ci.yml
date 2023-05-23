@@ -1,0 +1,44 @@
+name: Build and test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches:
+      - main
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build workspace members
+        run: |
+          cargo build --release
+
+      - name: List contents
+        run: ls -la && ls -la target
+
+  build_devboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          target: thumbv7em-none-eabihf
+
+      - name: Build devboard
+        run: |
+          cd devboard &&
+          cargo build --release
+
+      - name: List contents
+        run: |
+          cd devboard &&
+          ls -la &&
+          ls -la target
