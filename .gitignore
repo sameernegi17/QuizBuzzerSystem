@@ -2,3 +2,5 @@
 .idea
 **/Cargo.lock
 web-server/static/js/*.js
+web-server/static/audio/*.mp3
+
