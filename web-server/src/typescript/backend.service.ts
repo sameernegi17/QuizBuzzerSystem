@@ -5,7 +5,14 @@ export class BackendService {
   constructor(private _httpService: HttpService) { };
 
   public startReactionGame() {
-    this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/reaction-game/start`);
+    console.log("about to start reaction game");
+    // this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/reaction-game/start`);
+    console.log(`${this._httpService.getHostBaseUrl()}/reaction-game/start`);
+    fetch(`${this._httpService.getHostBaseUrl()}/reaction-game/start`, {
+      method: 'GET',
+    }).then(response => {
+      console.log(JSON.stringify(response));
+    });
   }
 
   public startQuizGame() {

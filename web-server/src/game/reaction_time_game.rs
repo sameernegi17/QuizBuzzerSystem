@@ -6,6 +6,8 @@ use crate::{
     game,
 };
 use rand::Rng;
+use serde::Serialize;
+use serde_json::json;
 use std::{collections::HashSet, sync::mpsc, time::Duration};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -18,15 +20,19 @@ pub enum PlayerButtonState {
 /// random amount of time is chosen by the game, after which the players will be informed on the
 /// frontend that the buttons can now be pressed. The first player to press their button wins.
 /// Players that press their button too early will be informed that they have lost.
+#[derive(Serialize)]
 pub struct ReactionTimeGame {
+    #[serde(skip)]
     devboard_time_since_boot: Option<usize>,
     pub delay: Duration,
+    #[serde(skip)]
     pub player_button_states: [PlayerButtonState; game::NUMBER_OF_BUTTONS],
     /// List of button indices that were pressed too early
     pub overeager_trigger_happy: HashSet<usize>,
     /// List of button indices that were pressed in time, sorted by reaction time
     pub winners: Vec<(usize, usize)>,
     // Audio channel for fun sound effects (if available)
+    #[serde(skip)]
     audio: Option<mpsc::Sender<String>>,
 }
 
@@ -126,5 +132,14 @@ impl game::GameMode for ReactionTimeGame {
         }
 
         leds
+    }
+
+    fn serialize(&self) -> String {
+        let json = json!({"delay": self.delay.as_millis() as usize,
+            "droppedOutButtonIndices": self.overeager_trigger_happy,
+            "winners": self.winners,
+        });
+
+        json.to_string()
     }
 }
