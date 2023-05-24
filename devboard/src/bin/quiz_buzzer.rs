@@ -5,6 +5,7 @@
 use core::str::FromStr;
 use defmt::*;
 use devboard::{
+    button_tasks::{button_task, button_tasks},
     DevboardButtonLed, DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, State,
     BUFFER_SIZE, DEBOUNCE_MS, NUM_BUTTONS, Q, STATE_PERIOD_MS,
 };
@@ -14,12 +15,9 @@ use embassy_net::tcp::Error::ConnectionReset;
 use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
 use embassy_stm32::eth::generic_smi::GenericSMI;
 use embassy_stm32::eth::{Ethernet, PacketQueue};
-use embassy_stm32::exti::AnyChannel;
 use embassy_stm32::exti::Channel;
-use embassy_stm32::exti::ExtiInput;
 use embassy_stm32::gpio::Pin;
 use embassy_stm32::gpio::{AnyPin, Level, Output, Speed};
-use embassy_stm32::gpio::{Input, Pull};
 use embassy_stm32::interrupt;
 use embassy_stm32::peripherals::ETH;
 use embassy_stm32::rng::Rng;
@@ -31,33 +29,6 @@ use rand_core::RngCore;
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
-macro_rules! button_task {
-    // Optimization for one field
-    ($name:ident) => {
-        #[embassy_executor::task]
-        async fn $name(id: usize, button: AnyPin, exti_inp: AnyChannel) -> ! {
-            let button = Input::new(button, Pull::Up);
-            let mut button = ExtiInput::new(button, exti_inp);
-
-            loop {
-                button.wait_for_rising_edge().await;
-                Q.enqueue((id, Instant::now().as_millis())).ok();
-                Timer::after(Duration::from_millis(DEBOUNCE_MS)).await;
-            }
-        }
-    };
-}
-
-macro_rules! button_tasks {
-    ($($name:ident),+) => {
-        $(
-            button_task!($name);
-        )+
-    };
-}
-
-button_tasks!(button1, button2, button3, button4, button5, button6);
-
 macro_rules! singleton {
     ($val:expr) => {{
         type T = impl Sized;
@@ -68,6 +39,8 @@ macro_rules! singleton {
 }
 
 type Device = Ethernet<'static, ETH, GenericSMI>;
+
+button_tasks!(button1, button2, button3, button4, button5, button6);
 
 #[embassy_executor::task]
 async fn net_task(stack: &'static Stack<Device>) -> ! {

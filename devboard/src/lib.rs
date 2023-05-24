@@ -4,6 +4,8 @@ use defmt::Format;
 use heapless::{mpmc::Q64, Vec};
 use serde::{Deserialize, Serialize};
 
+pub mod button_tasks;
+
 pub const NUM_BUTTONS: usize = 6;
 pub const NUM_BUTTON_PRESSES_PER_MSG: usize = 20;
 pub const DEBOUNCE_MS: u64 = 200;
