@@ -48,11 +48,25 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
     }
 }
 
-pub async fn reset_route(
+pub async fn start_reaction_time_game_route(
     game_state: web::Data<GameState>,
     audio: web::Data<Option<AudioSender>>,
 ) -> impl Responder {
-    print!("Resetting game state...");
+    print!("Resetting game state, starting new reaction time game...");
+
+    // Start a new game. Also allow the game to play some fun audio if we have audio output.
+    *game_state.lock().unwrap() = Box::new(crate::game::reaction_time_game::ReactionTimeGame::new(
+        audio.get_ref().as_ref().map(|m| m.lock().unwrap().clone()),
+    ));
+
+    HttpResponse::Ok()
+}
+
+pub async fn start_quiz_game_route(
+    game_state: web::Data<GameState>,
+    audio: web::Data<Option<AudioSender>>,
+) -> impl Responder {
+    print!("Resetting game state, starting new quiz time game...");
 
     // Start a new game. Also allow the game to play some fun audio if we have audio output.
     *game_state.lock().unwrap() = Box::new(crate::game::reaction_time_game::ReactionTimeGame::new(
