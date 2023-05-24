@@ -3,7 +3,7 @@ import di from "./di.js";
 import { QuestionService } from "./question.service.js";
 
 interface ButtonEvents {
-  buttonEvents:  
+  // buttonEvents:  
 }
 
 interface ButtonEvent {
