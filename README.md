@@ -43,4 +43,17 @@ In the production config, you can navigate to
 [http://192.168.100.1:8000/](http://192.168.100.1:8000/)
 to see the frontend.
 
+## VS Code
+
+For the `rust-analyzer` to work in VS Code in the `devboard` folder, we need
+to add custom settings in `Ctrl+Shift+P` ->
+`Preferences: Open User Settings (JSON)`.
+
+```json
+{
+  "rust-analyzer.checkOnSave.allTargets": false,
+  "rust-analyzer.checkOnSave.extraArgs": ["--target", "thumbv7m-none-eabihf"]
+}
+```
+
 [board]: https://www.st.com/en/evaluation-tools/stm32h745i-disco.html
