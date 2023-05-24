@@ -5,8 +5,8 @@
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
-use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
 use embassy_net::tcp::Error::ConnectionReset;
+use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
 use embassy_stm32::eth::generic_smi::GenericSMI;
 use embassy_stm32::eth::{Ethernet, PacketQueue};
 use embassy_stm32::peripherals::ETH;
@@ -18,9 +18,9 @@ use embedded_io::asynch::Write;
 use embedded_nal_async::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpConnect};
 use heapless::Vec;
 use rand_core::RngCore;
+use serde::{Deserialize, Serialize};
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
-use serde::{Serialize, Deserialize};
 
 macro_rules! singleton {
     ($val:expr) => {{
@@ -36,7 +36,6 @@ struct Point {
     x: i32,
     y: i32,
 }
-
 
 type Device = Ethernet<'static, ETH, GenericSMI>;
 
@@ -87,13 +86,18 @@ async fn main(spawner: Spawner) -> ! {
 
     // let config = embassy_net::Config::Dhcp(Default::default());
     let config = embassy_net::Config::Static(embassy_net::StaticConfig {
-       address: Ipv4Cidr::new(Ipv4Address::new(192, 168, 100, 5), 24),
-       dns_servers: Vec::new(),
-       gateway: Some(Ipv4Address::new(192, 168, 100, 1)),
+        address: Ipv4Cidr::new(Ipv4Address::new(192, 168, 100, 5), 24),
+        dns_servers: Vec::new(),
+        gateway: Some(Ipv4Address::new(192, 168, 100, 1)),
     });
 
     // Init network stack
-    let stack = &*singleton!(Stack::new(device, config, singleton!(StackResources::<2>::new()), seed));
+    let stack = &*singleton!(Stack::new(
+        device,
+        config,
+        singleton!(StackResources::<2>::new()),
+        seed
+    ));
 
     // Launch network task
     unwrap!(spawner.spawn(net_task(&stack)));
@@ -109,7 +113,6 @@ async fn main(spawner: Spawner) -> ! {
     loop {
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 100, 1), 8000));
 
-        
         let mut counter = 0;
         info!("connecting...");
         let r = client.connect(addr).await;
@@ -122,8 +125,7 @@ async fn main(spawner: Spawner) -> ! {
         info!("connected!");
         let mut point = Point { x: 1, y: 2 };
         loop {
-
-            let serialized = serde_json_core::ser::to_string::<Point,200>(&point).unwrap();
+            let serialized = serde_json_core::ser::to_string::<Point, 200>(&point).unwrap();
 
             // Prints serialized = {"x":1,"y":2}
 
@@ -132,11 +134,11 @@ async fn main(spawner: Spawner) -> ! {
             let s: &str = format_no_std::show(
                 &mut buf,
                 format_args!("GET /show/{serialized} HTTP/1.1\r\n\r\n"),
-            ).unwrap();
-
+            )
+            .unwrap();
 
             info!("serialized = {:?}", s);
-            
+
             let r = connection.write_all(s.as_bytes()).await;
             if let Err(e) = r {
                 info!("write error: {:?}", e);
@@ -147,11 +149,9 @@ async fn main(spawner: Spawner) -> ! {
 
                 continue;
             }
-            point.x +=1;
-            point.y +=5;
+            point.x += 1;
+            point.y += 5;
             Timer::after(Duration::from_secs(1)).await;
-
-            
         }
     }
 }

@@ -1,13 +1,14 @@
 #![no_std]
 
+use defmt::Format;
 use heapless::{mpmc::Q64, Vec};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-pub const NUM_BUTTONS: i32 = 6;
+pub const NUM_BUTTONS: usize = 6;
 pub const NUM_BUTTON_PRESSES_PER_MSG: usize = 20;
-pub const DEBOUNCE_MS: u64 = 100;
-pub const STATE_PERIOD_MS: u64 = 1000;
-pub const BUFFER_SIZE: usize = 100 + (NUM_BUTTON_PRESSES_PER_MSG * 20);
+pub const DEBOUNCE_MS: u64 = 200;
+pub const STATE_PERIOD_MS: u64 = 100;
+pub const BUFFER_SIZE: usize = 100 + (NUM_BUTTON_PRESSES_PER_MSG * 50);
 pub static Q: Q64<(usize, u64)> = Q64::new();
 
 #[derive(Serialize, Debug)]
@@ -18,7 +19,7 @@ pub struct State {
 
 #[derive(Debug, Serialize)]
 pub struct DevboardEvents {
-    pub number_of_buttons: i32,
+    pub number_of_buttons: usize,
     pub ms_since_reset: u64,
     pub button_events: Vec<DevboardEvent, NUM_BUTTON_PRESSES_PER_MSG>,
 }
@@ -34,4 +35,14 @@ pub struct DevboardEvent {
 pub enum DevboardEventType {
     Pressed,
     Released,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DevboardButtonLeds {
+    pub button_leds: Vec<DevboardButtonLed, NUM_BUTTONS>,
+}
+
+#[derive(Debug, Deserialize, Clone, Format)]
+pub struct DevboardButtonLed {
+    pub enabled: bool,
 }
