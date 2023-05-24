@@ -1,0 +1,36 @@
+body {
+  background-color: #f8f9fa;
+}
+
+.container {
+  margin-top: 50px;
+}
+
+.btn-primary {
+  background-color: #0084ff;
+  border-color: #0084ff;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+#counter,
+#signal {
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.d-none {
+  display: none;
+}
+
+table {
+  width: 100%;
+}
+
+th,
+td {
+  text-align: center;
+}
