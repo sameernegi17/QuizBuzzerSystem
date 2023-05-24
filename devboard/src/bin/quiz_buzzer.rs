@@ -2,10 +2,10 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
-use core::str::FromStr;
 use defmt::*;
 use devboard::{
     button_tasks::{button_task, button_tasks},
+    http::extract_payload,
     DevboardButtonLed, DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, State,
     BUFFER_SIZE, DEBOUNCE_MS, NUM_BUTTONS, Q, STATE_PERIOD_MS,
 };
@@ -98,7 +98,6 @@ async fn main(_spawner: Spawner) {
         1,
     );
 
-    // let config = embassy_net::Config::Dhcp(Default::default());
     let config = embassy_net::Config::Static(embassy_net::StaticConfig {
         address: Ipv4Cidr::new(Ipv4Address::new(192, 168, 100, 5), 24),
         dns_servers: Vec::new(),
@@ -153,17 +152,11 @@ async fn main(_spawner: Spawner) {
                 button_events: Vec::new(),
             };
             while let Some(press) = Q.dequeue() {
-                // let (id, time) = press;
-                // let id: usize = id as usize;
-                // info!("press! {:?}, {:?}", id, time);
-
                 let dev_board_event = DevboardEvent {
                     button_index: press.0,
                     timestamp: press.1,
                     event_type: DevboardEventType::Pressed,
                 };
-
-                //state.button_presses.push(press);
 
                 devboard_events.button_events.push(dev_board_event);
 
@@ -194,14 +187,6 @@ async fn main(_spawner: Spawner) {
                 }
             }
 
-            let body_matcher = "\r\n\r\n";
-            let body_matcher_len: usize = 4;
-
-            let body_end_matcher = "\0";
-
-            let mut body_start: usize;
-            let body_end: usize;
-
             let mut reading_counter = 0;
             let mut body: heapless::String<500> = heapless::String::new();
             loop {
@@ -217,27 +202,7 @@ async fn main(_spawner: Spawner) {
 
                 let resp = unsafe { core::str::from_utf8_unchecked(&read_buf) };
 
-                let mut start = resp.find(body_matcher);
-                match start {
-                    Some(size) => {
-                        body_start = size + body_matcher_len;
-                    }
-                    None => {
-                        continue;
-                    }
-                }
-
-                let mut end = resp.find(body_end_matcher);
-                match end {
-                    Some(size) => {
-                        body_end = size;
-                    }
-                    None => {
-                        continue;
-                    }
-                }
-
-                body = heapless::String::from_str(&resp[body_start..body_end]).unwrap();
+                body = extract_payload(resp).unwrap();
                 break;
             }
 
