@@ -47,3 +47,18 @@ jobs:
           cd devboard &&
           ls -la &&
           ls -la target
+
+  compile_ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Compile typescript to javascript 
+        run: |
+          cd web-server/src/typescript &&
+          tsc
+
+      - name: List contents
+        run: |
+          cd web-server/static/js &&
+          ls -la
