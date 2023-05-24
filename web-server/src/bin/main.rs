@@ -81,12 +81,13 @@ async fn main() -> std::io::Result<()> {
     #[cfg(not(feature = "audio"))]
     let audio_channel: web::Data<Option<AudioSender>> = web::Data::new(None);
 
-    let game_state: web::Data<GameState> = web::Data::new(Mutex::new(ReactionTimeGame::new(
-        audio_channel
-            .get_ref()
-            .as_ref()
-            .map(|m| m.lock().unwrap().clone()),
-    )));
+    let game_state: web::Data<GameState> =
+        web::Data::new(Mutex::new(Box::new(ReactionTimeGame::new(
+            audio_channel
+                .get_ref()
+                .as_ref()
+                .map(|m| m.lock().unwrap().clone()),
+        ))));
 
     let conf = app_config::load_config().expect("Failed to load configuration");
 

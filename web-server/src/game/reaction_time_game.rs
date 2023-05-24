@@ -3,17 +3,10 @@ use crate::{
     devboard_controller::{
         DevboardButtonLed, DevboardButtonLeds, DevboardEventType, DevboardEvents,
     },
+    game,
 };
 use rand::Rng;
 use std::{collections::HashSet, sync::mpsc, time::Duration};
-
-const NUMBER_OF_BUTTONS: usize = 6;
-
-pub trait QuizMode {
-    /// This is the update function of the game loop. It takes new button input from the devboard
-    /// and returns a vector of booleans that represent the LED states of the buttons.
-    fn update(&mut self, inputs: DevboardEvents) -> DevboardButtonLeds;
-}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PlayerButtonState {
@@ -28,7 +21,7 @@ pub enum PlayerButtonState {
 pub struct ReactionTimeGame {
     devboard_time_since_boot: Option<usize>,
     pub delay: Duration,
-    pub player_button_states: [PlayerButtonState; NUMBER_OF_BUTTONS],
+    pub player_button_states: [PlayerButtonState; game::NUMBER_OF_BUTTONS],
     /// List of button indices that were pressed too early
     pub overeager_trigger_happy: HashSet<usize>,
     /// List of button indices that were pressed in time, sorted by reaction time
@@ -38,13 +31,13 @@ pub struct ReactionTimeGame {
 }
 
 impl ReactionTimeGame {
-    pub fn new(audio: Option<mpsc::Sender<String>>) -> ReactionTimeGame {
+    pub fn new(audio: Option<mpsc::Sender<String>>) -> Self {
         let delay = rand::thread_rng().gen_range(Duration::from_secs(4)..Duration::from_secs(15));
 
         ReactionTimeGame {
             devboard_time_since_boot: None,
             delay,
-            player_button_states: [PlayerButtonState::NotPressed; NUMBER_OF_BUTTONS],
+            player_button_states: [PlayerButtonState::NotPressed; game::NUMBER_OF_BUTTONS],
             overeager_trigger_happy: HashSet::new(),
             winners: Vec::new(),
             audio,
@@ -52,10 +45,13 @@ impl ReactionTimeGame {
     }
 }
 
-impl QuizMode for ReactionTimeGame {
+impl game::GameMode for ReactionTimeGame {
     fn update(&mut self, inputs: DevboardEvents) -> DevboardButtonLeds {
         // In first update after game start, save the time since boot of the devboard
         if self.devboard_time_since_boot.is_none() {
+            self.devboard_time_since_boot = Some(inputs.ms_since_reset);
+        } else if inputs.ms_since_reset < self.devboard_time_since_boot.unwrap() {
+            println!("Devboard reset detected, resetting timer");
             self.devboard_time_since_boot = Some(inputs.ms_since_reset);
         }
 
@@ -76,13 +72,15 @@ impl QuizMode for ReactionTimeGame {
             self.player_button_states[devboard_event.button_index] =
                 PlayerButtonState::Pressed(Duration::from_millis(time_since_game_start as u64));
 
-            // play some button audio
+            // Play some button audio for trigger happies and for the first winner. We assume the button events arrive in increasing order of time.
             #[cfg(feature = "audio")]
             if let Some(audio) = &self.audio {
                 if time_since_game_start >= self.delay.as_millis() as usize {
-                    audio
-                        .send(AUDIO_PATHS[devboard_event.button_index].to_string())
-                        .unwrap();
+                    if self.winners.is_empty() {
+                        audio
+                            .send(AUDIO_PATHS[devboard_event.button_index].to_string())
+                            .unwrap();
+                    }
                 } else {
                     audio.send(AUDIO_PATH_FAIL.to_string()).unwrap();
                 }
@@ -121,7 +119,7 @@ impl QuizMode for ReactionTimeGame {
 
         // Create response with LED of winning button enabled
         let mut leds = DevboardButtonLeds {
-            button_leds: vec![DevboardButtonLed { enabled: false }; NUMBER_OF_BUTTONS],
+            button_leds: vec![DevboardButtonLed { enabled: false }; game::NUMBER_OF_BUTTONS],
         };
         if let Some(w) = self.winners.first() {
             leds.button_leds[w.0] = DevboardButtonLed { enabled: true };
