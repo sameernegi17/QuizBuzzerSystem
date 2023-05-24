@@ -1,6 +1,5 @@
 use crate::{game::QuizMode, GameState};
 use actix_web::{web, HttpResponse, Responder};
-use chrono::{DateTime, Utc};
 
 // Request
 
@@ -36,9 +35,9 @@ pub struct DevboardButtonLed {
     pub enabled: bool,
 }
 
-pub(crate) async fn handle_devboard_request(
+pub async fn handle_devboard_request(
     devboard_events: web::Json<DevboardEvents>,
-    game_state: web::Data<crate::GameState>,
+    game_state: web::Data<GameState>,
 ) -> impl Responder {
     println!("Number of buttons: {}", devboard_events.number_of_buttons);
     for devboard_event in &devboard_events.button_events {
@@ -49,7 +48,7 @@ pub(crate) async fn handle_devboard_request(
     }
 
     // one tick of game loop
-    let devboard_button_leds = game_state.0.lock().unwrap().update(devboard_events.0);
+    let devboard_button_leds = game_state.lock().unwrap().update(devboard_events.0);
 
     HttpResponse::Ok().json(devboard_button_leds)
 }

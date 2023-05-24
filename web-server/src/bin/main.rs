@@ -1,20 +1,17 @@
 use actix_files as fs;
 use actix_files::NamedFile;
 use actix_web::{
-    dev::AppConfig, get, http::StatusCode, web, App, HttpRequest, HttpResponse, HttpServer,
-    Responder, Result,
+    get, http::StatusCode, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::mpsc;
 use std::sync::Mutex;
-
-mod app_config;
-#[cfg(feature = "audio")]
-mod audio;
-mod devboard_controller;
-mod frontend_controller;
-mod game;
+use web_server::app_config;
+use web_server::devboard_controller::handle_devboard_request;
+use web_server::frontend_controller::reset_route;
+use web_server::frontend_controller::websocket_route;
+use web_server::game::ReactionTimeGame;
+use web_server::AudioSender;
+use web_server::GameState;
 
 struct AppStateWithCounter {
     counter: Mutex<i32>, // <- Mutex is necessary to mutate safely across threads
@@ -30,11 +27,6 @@ struct RequestPoint {
     point: Mutex<Point>,
 }
 
-struct GameState(Mutex<game::ReactionTimeGame>);
-
-/// Audio sender that will be available when audio file paths defined in audio module are present
-struct AudioSender(Mutex<mpsc::Sender<String>>);
-
 async fn add_one(data: web::Data<AppStateWithCounter>) -> String {
     let mut counter = data.counter.lock().unwrap(); // <- get counter's MutexGuard
     *counter += 1; // <- access counter inside MutexGuard
@@ -46,23 +38,22 @@ async fn add_one(data: web::Data<AppStateWithCounter>) -> String {
 async fn show_point(req: HttpRequest, requestpoint: web::Data<RequestPoint>) -> impl Responder {
     let data = req.match_info().get("data").unwrap();
 
-    let decoded_string: Point = serde_json::from_str(&data).unwrap();
+    let decoded_string: Point = serde_json::from_str(data).unwrap();
     let mut mutreqpoint = requestpoint.point.lock().unwrap();
     *mutreqpoint = decoded_string;
     println!("{:?}", *mutreqpoint);
     format!("{:?}", mutreqpoint)
 }
 
-async fn index(req: HttpRequest) -> Result<HttpResponse> {
+async fn index(_req: HttpRequest) -> Result<HttpResponse> {
     Ok(HttpResponse::build(StatusCode::OK)
         .content_type("text/html; charset=utf-8")
-        .body(include_str!("../static/html/index.html")))
+        .body(include_str!("../../static/html/index.html")))
 }
 
-async fn score_page(req: HttpRequest, requestpoint: web::Data<RequestPoint>) -> impl Responder {
+async fn score_page(_req: HttpRequest, requestpoint: web::Data<RequestPoint>) -> impl Responder {
     let mutreqpoint = requestpoint.point.lock().unwrap();
-    let serialized = serde_json::to_string(&(*mutreqpoint));
-    serialized
+    serde_json::to_string(&(*mutreqpoint))
 }
 
 async fn game_page() -> actix_web::Result<NamedFile> {
@@ -86,18 +77,20 @@ async fn main() -> std::io::Result<()> {
     });
 
     #[cfg(feature = "audio")]
-    let audio_channel: web::Data<Option<AudioSender>> =
-        web::Data::new(audio::spawn_audio_thread().map(|tx| AudioSender(Mutex::new(tx))));
+    let audio_channel: web::Data<Option<AudioSender>> = {
+        use web_server::audio::spawn_audio_thread;
+        web::Data::new(spawn_audio_thread().map(Mutex::new))
+    };
+
     #[cfg(not(feature = "audio"))]
     let audio_channel: web::Data<Option<AudioSender>> = web::Data::new(None);
 
-    let game_state: web::Data<GameState> =
-        web::Data::new(GameState(Mutex::new(game::ReactionTimeGame::new(
-            audio_channel
-                .get_ref()
-                .as_ref()
-                .map(|m| m.0.lock().unwrap().clone()),
-        ))));
+    let game_state: web::Data<GameState> = web::Data::new(Mutex::new(ReactionTimeGame::new(
+        audio_channel
+            .get_ref()
+            .as_ref()
+            .map(|m| m.lock().unwrap().clone()),
+    )));
 
     let conf = app_config::load_config().expect("Failed to load configuration");
 
@@ -113,16 +106,10 @@ async fn main() -> std::io::Result<()> {
             .route("/add", web::to(add_one))
             .route("/score_page", web::to(score_page))
             .route("/scorepage", web::to(scorepage))
-            .route(
-                "/devboard",
-                web::post().to(devboard_controller::handle_devboard_request),
-            )
+            .route("/devboard", web::post().to(handle_devboard_request))
             .route("/game", web::to(game_page))
-            .route(
-                "/websocket",
-                web::get().to(frontend_controller::websocket_route),
-            )
-            .route("/reset", web::to(frontend_controller::reset_route))
+            .route("/websocket", web::get().to(websocket_route))
+            .route("/reset", web::to(reset_route))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "../static")
