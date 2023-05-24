@@ -56,16 +56,8 @@ async fn score_page(_req: HttpRequest, requestpoint: web::Data<RequestPoint>) ->
     serde_json::to_string(&(*mutreqpoint))
 }
 
-async fn game_page() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open("static/html/game.html")?) // Modify the path as per your file structure
-}
-
 async fn reaction_game_page() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open("static/html/reaction-game.html")?) // Modify the path as per your file structure
-}
-
-async fn scorepage() -> actix_web::Result<NamedFile> {
-    Ok(NamedFile::open("static/html/scorepage.html")?) // Modify the path as per your file structure
 }
 
 #[actix_web::main]
@@ -107,11 +99,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(game_state.clone())
             .app_data(audio_channel.clone())
             .route("/", web::to(index))
-            .route("/add", web::to(add_one))
-            .route("/score_page", web::to(score_page))
-            .route("/scorepage", web::to(scorepage))
             .route("/devboard", web::post().to(handle_devboard_request))
-            .route("/game", web::to(game_page))
             .route("/websocket", web::get().to(websocket_route))
             .route("/reset", web::to(reset_route))
             .route("/play/reaction-game", web::to(reaction_game_page))
