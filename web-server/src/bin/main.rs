@@ -9,6 +9,7 @@ use web_server::app_config;
 use web_server::devboard_controller::handle_devboard_request;
 use web_server::frontend_controller::start_quiz_game_route;
 use web_server::frontend_controller::start_reaction_time_game_route;
+use web_server::frontend_controller::start_sound_check_route;
 use web_server::frontend_controller::websocket_route;
 use web_server::game::ReactionTimeGame;
 use web_server::AudioSender;
@@ -109,6 +110,7 @@ async fn main() -> std::io::Result<()> {
                 web::to(start_reaction_time_game_route),
             )
             .route("/quiz-game/start", web::to(start_quiz_game_route))
+            .route("/sound-check/start", web::to(start_sound_check_route))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "static")
