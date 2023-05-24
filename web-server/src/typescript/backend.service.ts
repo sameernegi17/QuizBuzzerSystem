@@ -2,10 +2,14 @@ import { HttpService } from "./http.service.js";
 
 export class BackendService {
 
-  constructor(private _httpService: HttpService) {};
+  constructor(private _httpService: HttpService) { };
 
-  public resetGame() {
-    this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/reset-game`);
+  public startReactionGame() {
+    this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/reaction-game/start`);
+  }
+
+  public startQuizGame() {
+    this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/quiz-game/start`);
   }
 
 }
