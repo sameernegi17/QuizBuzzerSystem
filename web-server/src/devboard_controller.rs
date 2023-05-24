@@ -39,7 +39,7 @@ pub async fn handle_devboard_request(
     devboard_events: web::Json<DevboardEvents>,
     game_state: web::Data<GameState>,
 ) -> impl Responder {
-    println!("Number of buttons: {}", devboard_events.number_of_buttons);
+    // println!("Number of buttons: {}", devboard_events.number_of_buttons);
     for devboard_event in &devboard_events.button_events {
         println!(
             "buttonIndex {}, eventType {:?}, timestamp {}",

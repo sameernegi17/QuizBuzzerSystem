@@ -2,8 +2,12 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
+use core::str::FromStr;
 use defmt::*;
-use devboard::{DevboardEvent, DevboardEventType, DevboardEvents, State, NUM_BUTTONS, BUFFER_SIZE, DEBOUNCE_MS, STATE_PERIOD_MS, Q};
+use devboard::{
+    DevboardButtonLed, DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, State,
+    BUFFER_SIZE, DEBOUNCE_MS, NUM_BUTTONS, Q, STATE_PERIOD_MS,
+};
 use embassy_executor::Spawner;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::tcp::Error::ConnectionReset;
@@ -13,8 +17,8 @@ use embassy_stm32::eth::{Ethernet, PacketQueue};
 use embassy_stm32::exti::AnyChannel;
 use embassy_stm32::exti::Channel;
 use embassy_stm32::exti::ExtiInput;
-use embassy_stm32::gpio::AnyPin;
 use embassy_stm32::gpio::Pin;
+use embassy_stm32::gpio::{AnyPin, Level, Output, Speed};
 use embassy_stm32::gpio::{Input, Pull};
 use embassy_stm32::interrupt;
 use embassy_stm32::peripherals::ETH;
@@ -26,6 +30,33 @@ use heapless::Vec;
 use rand_core::RngCore;
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
+
+macro_rules! button_task {
+    // Optimization for one field
+    ($name:ident) => {
+        #[embassy_executor::task]
+        async fn $name(id: usize, button: AnyPin, exti_inp: AnyChannel) -> ! {
+            let button = Input::new(button, Pull::Up);
+            let mut button = ExtiInput::new(button, exti_inp);
+
+            loop {
+                button.wait_for_rising_edge().await;
+                Q.enqueue((id, Instant::now().as_millis())).ok();
+                Timer::after(Duration::from_millis(DEBOUNCE_MS)).await;
+            }
+        }
+    };
+}
+
+macro_rules! button_tasks {
+    ($($name:ident),+) => {
+        $(
+            button_task!($name);
+        )+
+    };
+}
+
+button_tasks!(button1, button2, button3, button4, button5, button6);
 
 macro_rules! singleton {
     ($val:expr) => {{
@@ -43,33 +74,24 @@ async fn net_task(stack: &'static Stack<Device>) -> ! {
     stack.run().await
 }
 
-#[embassy_executor::task]
-async fn async_task1(id: usize, button: AnyPin, exti_inp: AnyChannel) -> ! {
-    let button = Input::new(button, Pull::Up);
-    let mut button = ExtiInput::new(button, exti_inp);
-
-    loop {
-        button.wait_for_rising_edge().await;
-        Q.enqueue((id, Instant::now().as_millis())).ok();
-        Timer::after(Duration::from_millis(DEBOUNCE_MS)).await;
-    }
-}
-
-#[embassy_executor::task]
-async fn async_task2(id: usize, button: AnyPin, exti_inp: AnyChannel) -> ! {
-    let button = Input::new(button, Pull::Up);
-    let mut button = ExtiInput::new(button, exti_inp);
-
-    loop {
-        button.wait_for_rising_edge().await;
-        Q.enqueue((id, Instant::now().as_millis())).ok();
-        Timer::after(Duration::from_millis(DEBOUNCE_MS)).await;
-    }
-}
-
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
+
+    // configure LED pins
+    let led_pins: [AnyPin; NUM_BUTTONS] = [
+        p.PA6.degrade(),
+        p.PA8.degrade(),
+        p.PI8.degrade(),
+        p.PB6.degrade(),
+        p.PE3.degrade(),
+        p.PB15.degrade(),
+    ];
+    let mut led_outputs: Vec<Output<AnyPin>, NUM_BUTTONS> = Vec::new();
+
+    for pin in led_pins {
+        led_outputs.push(Output::new(pin, Level::Low, Speed::Low));
+    }
 
     // Generate random seed.
     let mut rng = Rng::new(p.RNG);
@@ -122,8 +144,12 @@ async fn main(_spawner: Spawner) {
     unwrap!(_spawner.spawn(net_task(&stack)));
     info!("initialized");
 
-    unwrap!(_spawner.spawn(async_task1(0, p.PG3.degrade(), p.EXTI3.degrade())));
-    unwrap!(_spawner.spawn(async_task2(1, p.PK1.degrade(), p.EXTI1.degrade())));
+    unwrap!(_spawner.spawn(button1(0, p.PG3.degrade(), p.EXTI3.degrade())));
+    unwrap!(_spawner.spawn(button2(1, p.PK1.degrade(), p.EXTI1.degrade())));
+    unwrap!(_spawner.spawn(button3(2, p.PE6.degrade(), p.EXTI6.degrade())));
+    unwrap!(_spawner.spawn(button4(3, p.PB7.degrade(), p.EXTI7.degrade())));
+    unwrap!(_spawner.spawn(button5(4, p.PH15.degrade(), p.EXTI15.degrade())));
+    unwrap!(_spawner.spawn(button6(5, p.PB4.degrade(), p.EXTI4.degrade())));
 
     static STATE: TcpClientState<1, 1024, 1024> = TcpClientState::new();
     let client = TcpClient::new(&stack, &STATE);
@@ -194,9 +220,67 @@ async fn main(_spawner: Spawner) {
                     break;
                 }
             }
-            let resp = connection.read(&mut read_buf).await;
-            let resp = unsafe { core::str::from_utf8_unchecked(&read_buf) };
-            info!("{:?}", resp);
+
+            let body_matcher = "\r\n\r\n";
+            let body_matcher_len: usize = 4;
+
+            let body_end_matcher = "\0";
+
+            let mut body_start: usize;
+            let body_end: usize;
+
+            let mut reading_counter = 0;
+            let mut body: heapless::String<500> = heapless::String::new();
+            loop {
+                let resp = connection.read(&mut read_buf[reading_counter..]).await;
+                match resp {
+                    Ok(size) => {
+                        reading_counter += size;
+                    }
+                    Err(_) => {
+                        break;
+                    }
+                }
+
+                let resp = unsafe { core::str::from_utf8_unchecked(&read_buf) };
+
+                let mut start = resp.find(body_matcher);
+                match start {
+                    Some(size) => {
+                        body_start = size + body_matcher_len;
+                    }
+                    None => {
+                        continue;
+                    }
+                }
+
+                let mut end = resp.find(body_end_matcher);
+                match end {
+                    Some(size) => {
+                        body_end = size;
+                    }
+                    None => {
+                        continue;
+                    }
+                }
+
+                body = heapless::String::from_str(&resp[body_start..body_end]).unwrap();
+                break;
+            }
+
+            info!("Led{:?}", body);
+
+            let (dev_button_leds, leds) =
+                serde_json_core::from_str::<DevboardButtonLeds>(&body).unwrap();
+
+            for (id, new_state) in dev_button_leds.button_leds.iter().enumerate() {
+                match new_state.enabled {
+                    true => led_outputs[id].set_level(Level::High),
+                    false => led_outputs[id].set_level(Level::Low),
+                }
+            }
+
+            // info!("Led{:?}", dev_button_leds.button_leds);
             Timer::after(Duration::from_millis(STATE_PERIOD_MS)).await;
         }
     }
