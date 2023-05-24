@@ -55,9 +55,9 @@ pub async fn reset_route(
     print!("Resetting game state...");
 
     // Start a new game. Also allow the game to play some fun audio if we have audio output.
-    *game_state.lock().unwrap() = crate::game::ReactionTimeGame::new(
+    *game_state.lock().unwrap() = Box::new(crate::game::reaction_time_game::ReactionTimeGame::new(
         audio.get_ref().as_ref().map(|m| m.lock().unwrap().clone()),
-    );
+    ));
 
     HttpResponse::Ok()
 }

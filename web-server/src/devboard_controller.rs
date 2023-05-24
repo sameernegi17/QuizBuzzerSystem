@@ -1,4 +1,4 @@
-use crate::{game::QuizMode, GameState};
+use crate::GameState;
 use actix_web::{web, HttpResponse, Responder};
 
 // Request
