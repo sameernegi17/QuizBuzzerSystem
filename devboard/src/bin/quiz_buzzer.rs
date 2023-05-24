@@ -20,7 +20,7 @@ use embassy_stm32::interrupt;
 use embassy_stm32::peripherals::ETH;
 use embassy_stm32::rng::Rng;
 use embassy_time::{Duration, Instant, Timer};
-use embedded_io::asynch::Write;
+use embedded_io::asynch::{Write, Read};
 use embedded_nal_async::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpConnect};
 use heapless::mpmc::Q64;
 use heapless::Vec;
@@ -39,17 +39,37 @@ macro_rules! singleton {
     }};
 }
 
-const NUM_BUTTONS: usize = 6;
+const NUM_BUTTONS: i32 = 6;
 const NUM_BUTTON_PRESSES_PER_MSG: usize = 20;
 const DEBOUNCE_MS: u64 = 100;
 const STATE_PERIOD_MS: u64 = 1000;
 const BUFFER_SIZE: usize = 100 + (NUM_BUTTON_PRESSES_PER_MSG * 20);
-static Q: Q64<(u8, u64)> = Q64::new();
+static Q: Q64<(usize, u64)> = Q64::new();
 
 #[derive(Serialize, Debug)]
 struct State {
     time: u64,
-    button_presses: Vec<(u8, u64), NUM_BUTTON_PRESSES_PER_MSG>,
+    button_presses: Vec<(usize, u64), NUM_BUTTON_PRESSES_PER_MSG>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DevboardEvents {
+    pub number_of_buttons: i32,
+    pub ms_since_reset: u64,
+    pub button_events: Vec<DevboardEvent,NUM_BUTTON_PRESSES_PER_MSG>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DevboardEvent {
+    pub button_index: usize,
+    pub event_type: DevboardEventType,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub enum DevboardEventType {
+    Pressed,
+    Released,
 }
 
 type Device = Ethernet<'static, ETH, GenericSMI>;
@@ -60,7 +80,7 @@ async fn net_task(stack: &'static Stack<Device>) -> ! {
 }
 
 #[embassy_executor::task]
-async fn async_task1(id: u8, button: AnyPin, exti_inp: AnyChannel) -> ! {
+async fn async_task1(id: usize, button: AnyPin, exti_inp: AnyChannel) -> ! {
     let button = Input::new(button, Pull::Up);
     let mut button = ExtiInput::new(button, exti_inp);
 
@@ -72,7 +92,7 @@ async fn async_task1(id: u8, button: AnyPin, exti_inp: AnyChannel) -> ! {
 }
 
 #[embassy_executor::task]
-async fn async_task2(id: u8, button: AnyPin, exti_inp: AnyChannel) -> ! {
+async fn async_task2(id: usize, button: AnyPin, exti_inp: AnyChannel) -> ! {
     let button = Input::new(button, Pull::Up);
     let mut button = ExtiInput::new(button, exti_inp);
 
@@ -161,24 +181,29 @@ async fn main(_spawner: Spawner) {
         loop {
             let mut state: State = State { time: Instant::now().as_millis(), button_presses: Default::default() };
 
+            let mut devboard_events = DevboardEvents {ms_since_reset: Instant::now().as_millis(), number_of_buttons : NUM_BUTTONS, button_events : Vec::new()};
             while let Some(press) = Q.dequeue() {
                 // let (id, time) = press;
                 // let id: usize = id as usize;
                 // info!("press! {:?}, {:?}", id, time);
 
-                state.button_presses.push(press);
+                let dev_board_event = DevboardEvent {button_index: press.0 , timestamp : press.1 , event_type : DevboardEventType::Pressed };
 
-                if state.button_presses.is_full() { break }
+                //state.button_presses.push(press);
+
+                devboard_events.button_events.push(dev_board_event);
+
+                if devboard_events.button_events.is_full() { break }
             }
-            info!("time: {:?}, button_presses: {:?}", state.time, state.button_presses);
 
-            let serialized = serde_json_core::ser::to_string::<State, { BUFFER_SIZE }>(&state).unwrap();
+            let serialized = serde_json_core::ser::to_string::<DevboardEvents, { BUFFER_SIZE }>(&devboard_events).unwrap();
             info!("Serialized: {:?}", serialized);
 
             let mut buf = [0u8; BUFFER_SIZE];
+            let mut read_buf = [0u8; BUFFER_SIZE];
             let request: &str = format_no_std::show(
                 &mut buf,
-                format_args!("POST /show HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {:?}\r\n\r\n{serialized}", serialized.len())
+                format_args!("POST /devboard HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {:?}\r\n\r\n{serialized}", serialized.len())
             ).unwrap();
 
             let r = connection.write_all(request.as_bytes()).await;
@@ -189,7 +214,9 @@ async fn main(_spawner: Spawner) {
                     break;
                 }
             }
-
+            let resp = connection.read(&mut read_buf).await;
+            let resp = unsafe {core::str::from_utf8_unchecked(&read_buf)};
+            info!("{:?}",resp);
             Timer::after(Duration::from_millis(STATE_PERIOD_MS)).await;
         }
     }
