@@ -10,12 +10,23 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  format:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly
+          components: rustfmt
+      - run: cargo +nightly fmt --check
+
   build_workspace:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install audio dependencies
         run: |
           sudo apt-get update
@@ -52,8 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Compile typescript to javascript 
+
+      - name: Compile typescript to javascript
         run: |
           cd web-server/src/typescript &&
           tsc
