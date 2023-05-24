@@ -10,7 +10,7 @@ For the `web-server` to run, you need to install a library for the audio
 dependency.
 
 ```bash
-sudo apt-get update && sudo apt-get install -y libasound2-dev
+sudo apt-get update && sudo apt-get install -y libasound2-dev node-typescript
 ```
 
 For the `devboard`, you need to configure a local-link ethernet connection with
