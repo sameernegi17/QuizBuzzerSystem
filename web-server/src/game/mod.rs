@@ -2,6 +2,7 @@ use crate::devboard_controller::{DevboardButtonLeds, DevboardEvents};
 
 pub mod quiz_game;
 pub mod reaction_time_game;
+pub mod sound_check;
 
 const NUMBER_OF_BUTTONS: usize = 6;
 
@@ -13,3 +14,4 @@ pub trait GameMode: Send {
 
 pub use quiz_game::QuizGame;
 pub use reaction_time_game::ReactionTimeGame;
+pub use sound_check::SoundCheck;
