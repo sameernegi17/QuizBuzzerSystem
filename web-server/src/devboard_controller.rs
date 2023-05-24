@@ -48,6 +48,7 @@ pub(crate) async fn handle_devboard_request(
         );
     }
 
+    // one tick of game loop
     let devboard_button_leds = game_state.0.lock().unwrap().update(devboard_events.0);
 
     HttpResponse::Ok().json(devboard_button_leds)

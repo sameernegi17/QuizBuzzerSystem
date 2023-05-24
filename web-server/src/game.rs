@@ -2,7 +2,7 @@ use crate::devboard_controller::{
     DevboardButtonLed, DevboardButtonLeds, DevboardEventType, DevboardEvents,
 };
 use rand::Rng;
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet, sync::mpsc, time::Duration};
 
 const NUMBER_OF_BUTTONS: usize = 6;
 
@@ -30,17 +30,21 @@ pub struct ReactionTimeGame {
     pub overeager_trigger_happy: HashSet<usize>,
     /// List of button indices that were pressed in time, sorted by reaction time
     pub winners: Vec<(usize, usize)>,
+    // Audio channel for fun sound effects (if available)
+    audio: Option<mpsc::Sender<String>>,
 }
 
 impl ReactionTimeGame {
-    pub fn new() -> ReactionTimeGame {
+    pub fn new(audio: Option<mpsc::Sender<String>>) -> ReactionTimeGame {
         let delay = rand::thread_rng().gen_range(Duration::from_secs(4)..Duration::from_secs(15));
+
         ReactionTimeGame {
             devboard_time_since_boot: None,
             delay,
             player_button_states: [PlayerButtonState::NotPressed; NUMBER_OF_BUTTONS],
             overeager_trigger_happy: HashSet::new(),
             winners: Vec::new(),
+            audio,
         }
     }
 }
@@ -66,9 +70,20 @@ impl QuizMode for ReactionTimeGame {
 
             let time_since_game_start =
                 devboard_event.timestamp - self.devboard_time_since_boot.unwrap();
-            self.player_button_states[devboard_event.button_index] = PlayerButtonState::Pressed(
-                Duration::from_millis(time_since_game_start as u64) - self.delay,
-            );
+            self.player_button_states[devboard_event.button_index] =
+                PlayerButtonState::Pressed(Duration::from_millis(time_since_game_start as u64));
+
+            // play some button audio
+            #[cfg(feature = "audio")]
+            if let Some(audio) = &self.audio {
+                if time_since_game_start >= self.delay.as_millis() as usize {
+                    audio
+                        .send(crate::audio::AUDIO_PATHS[devboard_event.button_index].to_string())
+                        .unwrap();
+                } else {
+                    audio.send("fail.mp3".to_string()).unwrap();
+                }
+            }
         }
 
         // Update game state
