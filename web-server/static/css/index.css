@@ -67,3 +67,19 @@ body {
     transform: translateY(0);
   }
 }
+
+#pong-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+.counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 36px;
+  color: #d3d3d3;
+}
