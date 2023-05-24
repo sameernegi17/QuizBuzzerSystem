@@ -5,13 +5,12 @@
 use defmt::*;
 use devboard::{
     button_tasks::{button_task, button_tasks},
-    http::extract_payload,
-    DevboardButtonLed, DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, State,
-    BUFFER_SIZE, DEBOUNCE_MS, NUM_BUTTONS, Q, STATE_PERIOD_MS,
+    http::{extract_payload, TinyHttpClient},
+    DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, BUFFER_SIZE, DEBOUNCE_MS,
+    NUM_BUTTONS, Q, STATE_PERIOD_MS,
 };
 use embassy_executor::Spawner;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
-use embassy_net::tcp::Error::ConnectionReset;
 use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
 use embassy_stm32::eth::generic_smi::GenericSMI;
 use embassy_stm32::eth::{Ethernet, PacketQueue};
@@ -22,9 +21,8 @@ use embassy_stm32::interrupt;
 use embassy_stm32::peripherals::ETH;
 use embassy_stm32::rng::Rng;
 use embassy_time::{Duration, Instant, Timer};
-use embedded_io::asynch::{Read, Write};
-use embedded_nal_async::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpConnect};
-use heapless::Vec;
+use embedded_nal_async::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use heapless::{String, Vec};
 use rand_core::RngCore;
 use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -63,7 +61,9 @@ async fn main(_spawner: Spawner) {
     let mut led_outputs: Vec<Output<AnyPin>, NUM_BUTTONS> = Vec::new();
 
     for pin in led_pins {
-        led_outputs.push(Output::new(pin, Level::Low, Speed::Low));
+        led_outputs
+            .push(Output::new(pin, Level::Low, Speed::Low))
+            .ok();
     }
 
     // Generate random seed.
@@ -124,102 +124,62 @@ async fn main(_spawner: Spawner) {
     unwrap!(_spawner.spawn(button6(5, p.PB4.degrade(), p.EXTI4.degrade())));
 
     static STATE: TcpClientState<1, 1024, 1024> = TcpClientState::new();
-    let client = TcpClient::new(&stack, &STATE);
+    let tcp_client = TcpClient::new(&stack, &STATE);
+    let mut response_buffer = [0u8; BUFFER_SIZE];
 
     loop {
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 100, 1), 8000));
-
+        let http_client = TinyHttpClient::new(&tcp_client, addr).await;
         info!("connecting...!");
-        let r = client.connect(addr).await;
+        if let Ok(mut http_client) = http_client {
+            info!("connected!");
 
-        if let Err(e) = r {
-            info!("connect error: {:?}", e);
-            Timer::after(Duration::from_secs(1)).await;
-            continue;
-        }
-        let mut connection = r.unwrap();
-        info!("connected!");
-
-        loop {
-            let mut state: State = State {
-                time: Instant::now().as_millis(),
-                button_presses: Default::default(),
-            };
-
-            let mut devboard_events = DevboardEvents {
-                ms_since_reset: Instant::now().as_millis(),
-                number_of_buttons: NUM_BUTTONS,
-                button_events: Vec::new(),
-            };
-            while let Some(press) = Q.dequeue() {
-                let dev_board_event = DevboardEvent {
-                    button_index: press.0,
-                    timestamp: press.1,
-                    event_type: DevboardEventType::Pressed,
-                };
-
-                devboard_events.button_events.push(dev_board_event);
-
-                if devboard_events.button_events.is_full() {
-                    break;
-                }
-            }
-
-            let serialized = serde_json_core::ser::to_string::<DevboardEvents, { BUFFER_SIZE }>(
-                &devboard_events,
-            )
-            .unwrap();
-            info!("Serialized: {:?}", serialized);
-
-            let mut buf = [0u8; BUFFER_SIZE];
-            let mut read_buf = [0u8; BUFFER_SIZE];
-            let request: &str = format_no_std::show(
-                &mut buf,
-                format_args!("POST /devboard HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {:?}\r\n\r\n{serialized}", serialized.len())
-            ).unwrap();
-
-            let r = connection.write_all(request.as_bytes()).await;
-            if let Err(e) = r {
-                info!("write error: {:?}", e);
-
-                if e == ConnectionReset {
-                    break;
-                }
-            }
-
-            let mut reading_counter = 0;
-            let mut body: heapless::String<500> = heapless::String::new();
             loop {
-                let resp = connection.read(&mut read_buf[reading_counter..]).await;
-                match resp {
-                    Ok(size) => {
-                        reading_counter += size;
-                    }
-                    Err(_) => {
+                let mut devboard_events = DevboardEvents {
+                    ms_since_reset: Instant::now().as_millis(),
+                    number_of_buttons: NUM_BUTTONS,
+                    button_events: Vec::new(),
+                };
+                while let Some(press) = Q.dequeue() {
+                    let dev_board_event = DevboardEvent {
+                        button_index: press.0,
+                        timestamp: press.1,
+                        event_type: DevboardEventType::Pressed,
+                    };
+
+                    devboard_events.button_events.push(dev_board_event).ok();
+
+                    if devboard_events.button_events.is_full() {
                         break;
                     }
                 }
 
-                let resp = unsafe { core::str::from_utf8_unchecked(&read_buf) };
+                let serialized =
+                    serde_json_core::ser::to_string::<DevboardEvents, { BUFFER_SIZE }>(
+                        &devboard_events,
+                    )
+                    .unwrap();
+                info!("Serialized: {:?}", serialized);
 
-                body = extract_payload(resp).unwrap();
-                break;
-            }
+                let body: String<500> =
+                    http_client.get_req(&serialized, &mut response_buffer).await;
 
-            info!("Led{:?}", body);
+                info!("Led{:?}", body);
 
-            let (dev_button_leds, leds) =
-                serde_json_core::from_str::<DevboardButtonLeds>(&body).unwrap();
+                let (dev_button_leds, _leds) =
+                    serde_json_core::from_str::<DevboardButtonLeds>(&body).unwrap();
 
-            for (id, new_state) in dev_button_leds.button_leds.iter().enumerate() {
-                match new_state.enabled {
-                    true => led_outputs[id].set_level(Level::High),
-                    false => led_outputs[id].set_level(Level::Low),
+                for (id, new_state) in dev_button_leds.button_leds.iter().enumerate() {
+                    match new_state.enabled {
+                        true => led_outputs[id].set_level(Level::High),
+                        false => led_outputs[id].set_level(Level::Low),
+                    }
                 }
-            }
 
-            // info!("Led{:?}", dev_button_leds.button_leds);
-            Timer::after(Duration::from_millis(STATE_PERIOD_MS)).await;
+                Timer::after(Duration::from_millis(STATE_PERIOD_MS)).await;
+            }
+        } else {
+            info!("Failed to connect");
         }
     }
 }
