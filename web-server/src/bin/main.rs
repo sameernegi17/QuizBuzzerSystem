@@ -60,6 +60,10 @@ async fn game_page() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open("static/html/game.html")?) // Modify the path as per your file structure
 }
 
+async fn reaction_game_page() -> actix_web::Result<NamedFile> {
+    Ok(NamedFile::open("static/html/reaction-game.html")?) // Modify the path as per your file structure
+}
+
 async fn scorepage() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open("static/html/scorepage.html")?) // Modify the path as per your file structure
 }
@@ -110,6 +114,7 @@ async fn main() -> std::io::Result<()> {
             .route("/game", web::to(game_page))
             .route("/websocket", web::get().to(websocket_route))
             .route("/reset", web::to(reset_route))
+            .route("/play/reaction-game", web::to(reaction_game_page))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "static")

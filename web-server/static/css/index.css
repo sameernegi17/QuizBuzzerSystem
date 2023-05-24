@@ -24,6 +24,7 @@ body {
 .btn-primary {
   background-color: #0084ff;
   border-color: #0084ff;
+  position: relative;
 }
 
 .btn-primary:hover {
@@ -41,6 +42,14 @@ body {
   100% {
     transform: rotateY(360deg);
   }
+}
+
+#quiz-btn {
+  animation-delay: 0s;
+}
+
+#reaction-btn {
+  animation-delay: 2.5s;
 }
 
 .animated-title {
