@@ -1,5 +1,8 @@
-use crate::devboard_controller::{
-    DevboardButtonLed, DevboardButtonLeds, DevboardEventType, DevboardEvents,
+use crate::{
+    audio::{AUDIO_PATHS, AUDIO_PATH_FAIL},
+    devboard_controller::{
+        DevboardButtonLed, DevboardButtonLeds, DevboardEventType, DevboardEvents,
+    },
 };
 use rand::Rng;
 use std::{collections::HashSet, sync::mpsc, time::Duration};
@@ -78,10 +81,10 @@ impl QuizMode for ReactionTimeGame {
             if let Some(audio) = &self.audio {
                 if time_since_game_start >= self.delay.as_millis() as usize {
                     audio
-                        .send(crate::audio::AUDIO_PATHS[devboard_event.button_index].to_string())
+                        .send(AUDIO_PATHS[devboard_event.button_index].to_string())
                         .unwrap();
                 } else {
-                    audio.send("fail.mp3".to_string()).unwrap();
+                    audio.send(AUDIO_PATH_FAIL.to_string()).unwrap();
                 }
             }
         }
