@@ -4,13 +4,17 @@ use actix_web::{
     get, http::StatusCode, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result,
 };
 use serde::{Deserialize, Serialize};
+use std::net::TcpListener;
+use std::sync::mpsc;
 use std::sync::Mutex;
+use std::thread::spawn;
+use tungstenite::accept;
+use tungstenite::Message;
 use web_server::app_config;
 use web_server::devboard_controller::handle_devboard_request;
 use web_server::frontend_controller::start_quiz_game_route;
 use web_server::frontend_controller::start_reaction_time_game_route;
 use web_server::frontend_controller::start_sound_check_route;
-use web_server::frontend_controller::websocket_route;
 use web_server::game::ReactionTimeGame;
 use web_server::AudioSender;
 use web_server::GameState;
@@ -70,6 +74,29 @@ async fn quiz_game_page() -> actix_web::Result<NamedFile> {
 async fn main() -> std::io::Result<()> {
     env_logger::init();
 
+    /// A WebSocket echo server
+    let server = TcpListener::bind("127.0.0.1:9001").unwrap();
+    let (tx, rx) = flume::bounded(1000);
+    spawn(move || {
+        for stream in server.incoming() {
+            let rx = rx.clone();
+            spawn(move || {
+                print!("someone connected");
+                let mut websocket = accept(stream.unwrap()).unwrap();
+                for msg in rx.iter() {
+                    // let msg = websocket.read_message().unwrap();
+
+                    // We do not want to send back ping/pong messages.
+
+                    let msg = Message::Text(msg);
+                    websocket.write_message(msg).unwrap();
+                }
+            });
+        }
+    });
+
+    let recvr: web::Data<Mutex<flume::Sender<String>>> = web::Data::new(Mutex::new(tx));
+
     let counter = web::Data::new(AppStateWithCounter {
         counter: Mutex::new(0),
     });
@@ -105,9 +132,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(point.clone())
             .app_data(game_state.clone())
             .app_data(audio_channel.clone())
+            .app_data(recvr.clone())
             .route("/", web::to(index))
             .route("/devboard", web::post().to(handle_devboard_request))
-            .route("/websocket", web::get().to(websocket_route))
             .route("/play/reaction-game", web::to(reaction_game_page))
             .route("/play/quiz-game", web::to(quiz_game_page))
             .route(

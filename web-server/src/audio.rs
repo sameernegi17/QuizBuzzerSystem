@@ -18,6 +18,7 @@ pub fn spawn_audio_thread() -> Option<mpsc::Sender<String>> {
             .all(|path| std::path::Path::new(path).exists())
     {
         println!("Not all audio files were found. Place them into static/audio/");
+        log::warn!("Not all audio files were found. Place them into static/audio/");
         return None;
     }
 
