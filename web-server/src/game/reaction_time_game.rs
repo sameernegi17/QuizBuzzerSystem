@@ -32,7 +32,7 @@ pub struct ReactionTimeGame {
 
 impl ReactionTimeGame {
     pub fn new(audio: Option<mpsc::Sender<String>>) -> Self {
-        let delay = rand::thread_rng().gen_range(Duration::from_secs(2)..Duration::from_secs(13));
+        let delay = rand::thread_rng().gen_range(Duration::from_secs(1)..Duration::from_secs(2));
 
         ReactionTimeGame {
             devboard_time_since_boot: None,
