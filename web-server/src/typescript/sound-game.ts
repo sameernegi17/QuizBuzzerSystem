@@ -16,7 +16,7 @@ class SoundGameComponent {
 
   private onClickStartButton() {
     if (!this._reactionGameStarted) {
-      this._backendService.startReactionGame();
+      this._backendService.startSoundGame();
       this._reactionGameStarted = true;
       this._startGameButtonElement.disabled = true;
     }
