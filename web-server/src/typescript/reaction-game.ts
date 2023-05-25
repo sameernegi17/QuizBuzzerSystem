@@ -31,16 +31,13 @@ class ReactionGameComponent {
     this._startButtonElement = document.getElementById('start-btn') as HTMLButtonElement;
     this._counterElement = document.getElementById('counter') as HTMLDivElement;
     this._pressButtonSignalElement = document.getElementById('signal') as HTMLDivElement;
+    this._leaderboardTableElement = document.getElementById('leaderboard-table') as HTMLTableElement;
+    this._droppedUsersListElement = document.getElementById('dropped-users-list') as HTMLUListElement;
 
     this._startButtonElement.addEventListener('click', _ => this.onClickStartButton());
 
     const actionSocket = new WebSocket('ws://localhost:8000/reaction-game/action');
     const leaderboardSocket = new WebSocket('ws://localhost:8000/reaction-game/leaderboard');
-
-    setTimeout(() => this.onLeaderboardChanges({
-      entries: [{ buttonIndex: 2, reactionTimeMs: 2300 }, { buttonIndex: 0, reactionTimeMs: 2420 }, { buttonIndex: 3, reactionTimeMs: 2767 }],
-      droppedOutButtonIndices: [1, 5],
-    }), 3000);
 
     actionSocket.addEventListener('message', _ => this.onReactionPhaseStarts());
     leaderboardSocket.addEventListener('message', event => {
@@ -57,6 +54,35 @@ class ReactionGameComponent {
 
   private onCountdownEnds() {
     this._backendService.startReactionGame();
+
+    // TODO: remove - just for demo purposes
+
+    setTimeout(() => this.onReactionPhaseStarts(), 1500);
+
+    setTimeout(() => this.onLeaderboardChanges({
+      entries: [],
+      droppedOutButtonIndices: [1],
+    }), 700);
+
+    setTimeout(() => this.onLeaderboardChanges({
+      entries: [],
+      droppedOutButtonIndices: [1, 5],
+    }), 1300);
+
+    setTimeout(() => this.onLeaderboardChanges({
+      entries: [{ buttonIndex: 2, reactionTimeMs: 300 }],
+      droppedOutButtonIndices: [1, 5],
+    }), 1800);
+
+    setTimeout(() => this.onLeaderboardChanges({
+      entries: [{ buttonIndex: 2, reactionTimeMs: 300 }, { buttonIndex: 0, reactionTimeMs: 420 }],
+      droppedOutButtonIndices: [1, 5],
+    }), 1920);
+
+    setTimeout(() => this.onLeaderboardChanges({
+      entries: [{ buttonIndex: 2, reactionTimeMs: 300 }, { buttonIndex: 0, reactionTimeMs: 420 }, { buttonIndex: 3, reactionTimeMs: 1300 }],
+      droppedOutButtonIndices: [1, 5],
+    }), 2800);
   }
 
   private onReactionPhaseStarts() {
