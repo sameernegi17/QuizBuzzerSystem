@@ -33,7 +33,7 @@ const rightPaddle = {
 
 // Ball properties
 const ballSize = 10;
-const ballSpeed = 4;
+const ballSpeed = 5;
 
 const ball = {
   x: canvas.width / 2,
