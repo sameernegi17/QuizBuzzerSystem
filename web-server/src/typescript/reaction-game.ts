@@ -20,6 +20,10 @@ class ReactionGameComponent {
 
   private _pressButtonSignalElement: HTMLDivElement;
 
+  private _leaderboardTableElement = document.getElementById('leaderboard-table') as HTMLTableElement;
+
+  private _droppedUsersListElement = document.getElementById('dropped-users-list') as HTMLUListElement;
+
 
   constructor(private _backendService: BackendService) { };
 
@@ -32,6 +36,11 @@ class ReactionGameComponent {
 
     const actionSocket = new WebSocket('ws://localhost:8000/reaction-game/action');
     const leaderboardSocket = new WebSocket('ws://localhost:8000/reaction-game/leaderboard');
+
+    setTimeout(() => this.onLeaderboardChanges({
+      entries: [{ buttonIndex: 2, reactionTimeMs: 2300 }, { buttonIndex: 0, reactionTimeMs: 2420 }, { buttonIndex: 3, reactionTimeMs: 2767 }],
+      droppedOutButtonIndices: [1, 5],
+    }), 3000);
 
     actionSocket.addEventListener('message', _ => this.onReactionPhaseStarts());
     leaderboardSocket.addEventListener('message', event => {
@@ -57,15 +66,42 @@ class ReactionGameComponent {
   }
 
   private onLeaderboardChanges(leaderboard: Leaderboard) {
-    console.log(leaderboard);
+
+    this.clearLeaderboard();
+
+    // Update the leaderboard table
+    leaderboard.entries
+      .forEach(entry => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${entry.buttonIndex}</td>
+          <td>${entry.reactionTimeMs}</td>
+        `;
+        this._leaderboardTableElement.tBodies[0].appendChild(row);
+        console.log("Added")
+        console.log(entry);
+      });
+
+    this.clearDroppedUsers();
+
+    leaderboard.droppedOutButtonIndices.forEach(buttonIndex => {
+      const listItem = document.createElement('li');
+      listItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
+      listItem.innerHTML = `
+        ${buttonIndex}
+        <span class="badge bg-danger rounded-pill">x</span>
+      `;
+      this._droppedUsersListElement.appendChild(listItem);
+    });
+
   }
-
-
 
   private startGame() {
     this._startButtonElement.disabled = true;
     this._pressButtonSignalElement.classList.add('d-none');
     this.setCountdown(3, () => this.onCountdownEnds());
+    this.clearLeaderboard();
+    this.clearDroppedUsers();
   }
 
   private endGame() {
@@ -86,6 +122,14 @@ class ReactionGameComponent {
       }
     }, 1000);
 
+  }
+
+  private clearLeaderboard() {
+    this._leaderboardTableElement.querySelector('tbody').innerHTML = '';
+  }
+
+  private clearDroppedUsers() {
+    this._droppedUsersListElement.innerHTML = '';
   }
 
 }
