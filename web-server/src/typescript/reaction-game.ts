@@ -86,8 +86,7 @@ class ReactionGameComponent {
   }
 
   private onReactionPhaseStarts() {
-    this._pressButtonSignalElement.innerText = 'React now!';
-    this._pressButtonSignalElement.classList.add('bg-danger', 'text-white');
+    this._pressButtonSignalElement.classList.remove('d-none');
     this.endGame();
   }
 
@@ -104,8 +103,6 @@ class ReactionGameComponent {
           <td>${entry.reactionTimeMs}</td>
         `;
         this._leaderboardTableElement.tBodies[0].appendChild(row);
-        console.log("Added")
-        console.log(entry);
       });
 
     this.clearDroppedUsers();
