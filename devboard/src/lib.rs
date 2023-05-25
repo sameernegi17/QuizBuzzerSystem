@@ -10,7 +10,7 @@ pub mod http;
 pub const NUM_BUTTONS: usize = 6;
 pub const NUM_BUTTON_PRESSES_PER_MSG: usize = 20;
 pub const DEBOUNCE_MS: u64 = 200;
-pub const STATE_PERIOD_MS: u64 = 100;
+pub const STATE_PERIOD_MS: u64 = 50;
 pub const BUFFER_SIZE: usize = 100 + (NUM_BUTTON_PRESSES_PER_MSG * 50);
 pub static Q: Q64<(usize, u64)> = Q64::new();
 

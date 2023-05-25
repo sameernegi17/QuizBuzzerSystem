@@ -38,7 +38,7 @@ pub struct ReactionTimeGame {
 
 impl ReactionTimeGame {
     pub fn new(audio: Option<mpsc::Sender<String>>) -> Self {
-        let delay = rand::thread_rng().gen_range(Duration::from_secs(1)..Duration::from_secs(2));
+        let delay = rand::thread_rng().gen_range(Duration::from_secs(1)..Duration::from_secs(7));
 
         ReactionTimeGame {
             devboard_time_since_boot: None,
@@ -59,7 +59,14 @@ impl game::GameMode for ReactionTimeGame {
         } else if inputs.ms_since_reset < self.devboard_time_since_boot.unwrap() {
             println!("Devboard reset detected, resetting timer");
             self.devboard_time_since_boot = Some(inputs.ms_since_reset);
+            // sometimes we get button presses here, which should not be there.
+            // In this case we just return with an empty led vec
+            return DevboardButtonLeds {
+                button_leds: vec![DevboardButtonLed { enabled: false }; game::NUMBER_OF_BUTTONS],
+            };
         }
+
+        log::warn!("inputs.ms_since_reset {}", inputs.ms_since_reset);
 
         // Check if any player pressed their button
         for devboard_event in inputs.button_events {
@@ -75,6 +82,11 @@ impl game::GameMode for ReactionTimeGame {
 
             let time_since_game_start =
                 devboard_event.timestamp - self.devboard_time_since_boot.unwrap();
+            log::warn!(
+                "button timestamp {}, game start timestamp {}",
+                devboard_event.timestamp,
+                self.devboard_time_since_boot.unwrap()
+            );
             self.player_button_states[devboard_event.button_index] =
                 PlayerButtonState::Pressed(Duration::from_millis(time_since_game_start as u64));
 
@@ -114,7 +126,7 @@ impl game::GameMode for ReactionTimeGame {
             .filter_map(|(i, s)| {
                 if let PlayerButtonState::Pressed(d) = s {
                     if *d >= self.delay {
-                        return Some((i, d.as_millis() as usize));
+                        return Some((i, d.as_millis() as usize - self.delay.as_millis() as usize));
                     }
                 }
                 None

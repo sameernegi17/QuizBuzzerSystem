@@ -4,6 +4,10 @@ export class BackendService {
 
   constructor(private _httpService: HttpService) { };
 
+  public getHostBaseUrl() {
+    return `${this._httpService.getHostBaseUrl()}/reaction-game/start`;
+  }
+
   public startReactionGame() {
     console.log("about to start reaction game");
     // this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/reaction-game/start`);
