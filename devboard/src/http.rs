@@ -59,9 +59,17 @@ impl<'conn> TinyHttpClient<'conn> {
         // An async read does not guarantee to read all bytes in one go. We loop
         // until we read zero bytes or run into an error.
         let mut cursor_pos = 0;
+        let mut retries = 0;
         loop {
             match self.conn.read(&mut response_buffer[cursor_pos..]).await {
                 Ok(bytes_read) => {
+                    if retries >= 100 {
+                        return String::new();
+                    }
+                    if bytes_read == 0 {
+                        retries += 1;
+                        continue;
+                    }
                     cursor_pos += bytes_read;
                     if let Some(response) =
                         extract_payload(&unsafe { core::str::from_utf8_unchecked(response_buffer) })
