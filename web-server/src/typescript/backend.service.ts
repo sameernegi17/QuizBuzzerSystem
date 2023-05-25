@@ -23,4 +23,8 @@ export class BackendService {
     this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/quiz-game/start`);
   }
 
+  public startSoundGame() {
+    this._httpService.httpGet(`${this._httpService.getHostBaseUrl()}/sound-game/start`);
+  }
+
 }

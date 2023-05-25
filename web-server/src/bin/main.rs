@@ -70,6 +70,10 @@ async fn quiz_game_page() -> actix_web::Result<NamedFile> {
     Ok(NamedFile::open("static/html/quiz-game.html")?) // Modify the path as per your file structure
 }
 
+async fn sound_game_page() -> actix_web::Result<NamedFile> {
+    Ok(NamedFile::open("static/html/sound-game.html")?) // Modify the path as per your file structure
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
@@ -137,12 +141,13 @@ async fn main() -> std::io::Result<()> {
             .route("/devboard", web::post().to(handle_devboard_request))
             .route("/play/reaction-game", web::to(reaction_game_page))
             .route("/play/quiz-game", web::to(quiz_game_page))
+            .route("/play/sound-game", web::to(sound_game_page))
             .route(
                 "/reaction-game/start",
                 web::to(start_reaction_time_game_route),
             )
             .route("/quiz-game/start", web::to(start_quiz_game_route))
-            .route("/sound-check/start", web::to(start_sound_check_route))
+            .route("/sound-game/start", web::to(start_sound_check_route))
             .service(show_point)
             .service(
                 fs::Files::new("/static", "static")

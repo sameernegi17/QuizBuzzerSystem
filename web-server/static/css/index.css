@@ -10,6 +10,12 @@ body {
   margin-bottom: 20px;
 }
 
+.card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 .card-title {
   font-size: 24px;
   font-weight: bold;
