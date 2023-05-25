@@ -42,8 +42,9 @@ impl game::GameMode for SoundCheck {
         let sounds = button_ids
             .iter()
             .map(|id| {
-                let step = (t + (t / 10.0 * *id as f32).sin() * 3.0) as usize / 6;
-                let offset = (step * 7919) % AUDIO_PATHS.len();
+                let id = (id * 263) / AUDIO_PATHS.len();
+                let step = (t + (t / 5.0 * id as f32).sin() * 2.0) as usize / 5;
+                let offset = (id + step * 7919) % AUDIO_PATHS.len();
                 offset
             })
             .collect::<Vec<_>>();
