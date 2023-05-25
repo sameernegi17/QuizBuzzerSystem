@@ -3,12 +3,7 @@
 #![feature(type_alias_impl_trait)]
 
 use defmt::*;
-use devboard::{
-    button_tasks::{button_task, button_tasks},
-    http::{extract_payload, TinyHttpClient},
-    DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, BUFFER_SIZE, DEBOUNCE_MS,
-    NUM_BUTTONS, Q, STATE_PERIOD_MS,
-};
+use devboard::{button_tasks::{button_task, button_tasks}, http::{extract_payload, TinyHttpClient}, DevboardButtonLeds, DevboardEvent, DevboardEventType, DevboardEvents, BUFFER_SIZE, DEBOUNCE_MS, NUM_BUTTONS, Q, STATE_PERIOD_MS, RECONNECT_MS};
 use embassy_executor::Spawner;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
 use embassy_net::{Ipv4Address, Ipv4Cidr, Stack, StackResources};
@@ -159,27 +154,30 @@ async fn main(_spawner: Spawner) {
                         &devboard_events,
                     )
                     .unwrap();
-                info!("Serialized: {:?}", serialized);
+                debug!("Serialized: {:?}", serialized);
 
                 let body: String<500> =
                     http_client.get_req(&serialized, &mut response_buffer).await;
 
-                info!("Led{:?}", body);
+                debug!("Led{:?}", body);
 
-                let (dev_button_leds, _leds) =
-                    serde_json_core::from_str::<DevboardButtonLeds>(&body).unwrap();
-
-                for (id, new_state) in dev_button_leds.button_leds.iter().enumerate() {
-                    match new_state.enabled {
-                        true => led_outputs[id].set_level(Level::High),
-                        false => led_outputs[id].set_level(Level::Low),
+                if let Ok((dev_button_leds, _)) = serde_json_core::from_str::<DevboardButtonLeds>(&body) {
+                    for (id, new_state) in dev_button_leds.button_leds.iter().enumerate() {
+                        match new_state.enabled {
+                            true => led_outputs[id].set_level(Level::High),
+                            false => led_outputs[id].set_level(Level::Low),
+                        }
                     }
+                } else {
+                    info!("connection lost!");
+                    break;
                 }
 
                 Timer::after(Duration::from_millis(STATE_PERIOD_MS)).await;
             }
         } else {
             info!("Failed to connect");
+            Timer::after(Duration::from_millis(RECONNECT_MS)).await;
         }
     }
 }
