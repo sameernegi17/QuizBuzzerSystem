@@ -8,7 +8,6 @@ body {
 
 .card {
   margin-bottom: 20px;
-  animation: jumpAnimation 1s infinite;
 }
 
 .card-title {
@@ -54,18 +53,6 @@ body {
 
 .animated-title {
   animation: rotateAnimation 4s infinite;
-}
-
-@keyframes jumpAnimation {
-  0% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-  100% {
-    transform: translateY(0);
-  }
 }
 
 #pong-container {
