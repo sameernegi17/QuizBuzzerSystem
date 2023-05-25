@@ -61,8 +61,14 @@ class ReactionGameComponent {
   }
 
   private onCountdownEnds() {
-    this._backendService.startReactionGame();
-    this._countdownInterval = undefined;
+    //this._backendService.startReactionGame();
+    fetch(this._backendService.getHostBaseUrl(), {
+      method: 'GET',
+    }).then(response => {
+      console.log(JSON.stringify(response));
+      this._countdownInterval = undefined;
+    });
+
 
     // TODO: remove - just for demo purposes
 
@@ -106,6 +112,7 @@ class ReactionGameComponent {
 
     // if countdown is not running, set timer to gameState.delay and start countdown
     if (this._countdownInterval === undefined) {
+      console.log(gamestate.delay);
       this._countdownInterval = setTimeout(() => this.onReactionPhaseStarts(), gamestate.delay);
     }
 
@@ -136,7 +143,9 @@ class ReactionGameComponent {
   private startGame() {
     this._startButtonElement.disabled = true;
     this._pressButtonSignalElement.classList.add('d-none');
-    this.setCountdown(3, () => this.onCountdownEnds());
+    //this.setCountdown(3, () => this.onCountdownEnds());
+    this.onCountdownEnds();
+
     this.clearLeaderboard();
     this.clearDroppedUsers();
   }
@@ -157,8 +166,7 @@ class ReactionGameComponent {
         this._counterElement.classList.add('d-none'); // Hide the counter
         callback();
       }
-    }, 1000);
-
+    }, 500);
   }
 
   private clearLeaderboard() {
